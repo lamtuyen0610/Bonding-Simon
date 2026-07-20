@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    background-color: #0b1020;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(124, 58, 237, 0.18), transparent 40%),
+      radial-gradient(circle at 85% 0%, rgba(79, 209, 197, 0.12), transparent 45%);
+    min-height: 100vh;
+  }
+  ::selection {
+    background: rgba(124, 58, 237, 0.4);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-panel/80 border border-white/10 rounded-2xl shadow-card backdrop-blur-sm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-purple px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-soft hover:text-ink active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-turquoise/60 hover:text-turquoise active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .input-field {
+    @apply w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/30;
+  }
+  .eyebrow {
+    @apply text-xs font-mono uppercase tracking-[0.2em] text-turquoise/80;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+}

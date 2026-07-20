@@ -1,0 +1,28 @@
+# Đây là file mẫu tham khảo. Khi chạy `fly launch`, Fly CLI sẽ tự tạo ra `fly.toml`
+# thật cho bạn — hãy đối chiếu với file này để đảm bảo có đủ phần [mounts] và cổng đúng.
+# Đổi "ten-app-cua-ban" thành tên app bạn đặt lúc `fly launch`.
+
+app = "ten-app-cua-ban"
+primary_region = "sin" # Singapore - region gần Việt Nam nhất trong danh sách Fly.io
+
+[build]
+
+[env]
+  PORT = "4000"
+  NODE_ENV = "production"
+
+[mounts]
+  source = "data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

@@ -1,0 +1,204 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Send, Loader2, ShieldAlert } from "lucide-react";
+import { usePlayerState } from "../../hooks/usePlayerState";
+import { api, ApiError } from "../../api/client";
+import { useToast } from "../../contexts/ToastContext";
+import StatusBadge from "../../components/StatusBadge";
+import SafeDial from "../../components/SafeDial";
+
+export default function QuestionDetailPage() {
+  const { questionId } = useParams();
+  const navigate = useNavigate();
+  const { data, loading, refresh } = usePlayerState();
+  const toast = useToast();
+
+  const question = data?.questions.find((q) => q.id === questionId);
+
+  const [answer, setAnswer] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+
+  useEffect(() => {
+    if (question) {
+      setAnswer(question.draftAnswer ?? question.lastAnswer ?? "");
+    }
+  }, [question?.id]);
+
+  // Lưu nháp tự động khi người dùng gõ (debounce nhẹ), tránh mất câu trả lời nếu mất kết nối/refresh.
+  useEffect(() => {
+    if (!question || question.type === "SAFE_DIAL") return;
+    if (answer === (question.draftAnswer ?? question.lastAnswer ?? "")) return;
+    if (["CORRECT", "PENDING_REVIEW"].includes(question.status)) return;
+    const timer = setTimeout(async () => {
+      if (!answer.trim()) return;
+      setDraftSaving(true);
+      try {
+        await api.post("/player/answers/draft", { questionId: question.id, answer });
+      } catch {
+        // Lưu nháp thất bại thầm lặng - không làm gián đoạn trải nghiệm gõ.
+      } finally {
+        setDraftSaving(false);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [answer, question]);
+
+  if (loading && !data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-turquoise" size={28} />
+      </div>
+    );
+  }
+
+  if (!question) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="card p-6 text-center">
+          <p className="mb-4 text-white/70">Không tìm thấy câu hỏi này, hoặc câu hỏi đang bị khóa.</p>
+          <button className="btn-secondary" onClick={() => navigate("/dashboard")}>
+            Về Bảng điều tra
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const canSubmit = !["CORRECT", "PENDING_REVIEW"].includes(question.status);
+
+  async function doSubmit(finalAnswer: string) {
+    if (!question) return;
+    setSubmitting(true);
+    try {
+      const res = await api.post<{ submission: { status: string } }>("/player/answers/submit", {
+        questionId: question.id,
+        answer: finalAnswer,
+      });
+      if (res.submission.status === "CORRECT") {
+        toast("success", "Chính xác! Điểm đã được cộng.");
+      } else if (res.submission.status === "INCORRECT") {
+        toast("error", "Đáp án chưa đúng.");
+      } else {
+        toast("info", "Đã gửi đáp án. Đang chờ Ban tổ chức kiểm tra.");
+      }
+      await refresh();
+      setConfirming(false);
+      if (question.type !== "SAFE_DIAL") navigate("/dashboard");
+    } catch (err) {
+      toast("error", err instanceof ApiError ? err.message : "Không thể gửi đáp án. Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen pb-16">
+      <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+          <button onClick={() => navigate("/dashboard")} className="text-white/60 hover:text-white transition">
+            <ArrowLeft size={20} />
+          </button>
+          <span className="text-sm text-white/50">Bảng điều tra</span>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+        <div className="card p-6">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <h1 className="text-xl sm:text-2xl font-display font-bold">{question.title}</h1>
+            <span className="pill bg-purple/15 text-purple-soft border border-purple/30 shrink-0">
+              {question.points} điểm
+            </span>
+          </div>
+          <StatusBadge status={question.status} />
+
+          {question.description && (
+            <p className="mt-5 text-white/80 leading-relaxed whitespace-pre-line">{question.description}</p>
+          )}
+
+          {question.adminNote && (
+            <div className="mt-4 rounded-xl border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
+              <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+              <span>Ghi chú từ Ban tổ chức: {question.adminNote}</span>
+            </div>
+          )}
+        </div>
+
+        {question.type === "SAFE_DIAL" && question.safeDialConfig ? (
+          <SafeDial
+            digits={question.safeDialConfig.digits}
+            minDigit={question.safeDialConfig.minDigit}
+            maxDigit={question.safeDialConfig.maxDigit}
+            opened={question.status === "CORRECT"}
+            disabled={submitting || !canSubmit}
+            onSubmit={(code) => doSubmit(code)}
+          />
+        ) : (
+          <div className="card p-6 space-y-4">
+            <label className="text-sm text-white/60">Đáp án của đội</label>
+            <textarea
+              className="input-field min-h-[120px] resize-none"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              disabled={!canSubmit}
+              placeholder="Nhập đáp án của đội tại đây..."
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/30 h-4">{draftSaving ? "Đang lưu nháp..." : ""}</span>
+              <button
+                className="btn-primary"
+                disabled={!canSubmit || !answer.trim() || submitting}
+                onClick={() => setConfirming(true)}
+              >
+                <Send size={16} /> Gửi đáp án
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {confirming && (
+        <ConfirmDialog
+          answer={answer}
+          submitting={submitting}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => doSubmit(answer)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  answer,
+  submitting,
+  onCancel,
+  onConfirm,
+}: {
+  answer: string;
+  submitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+      <div className="card p-6 w-full max-w-sm">
+        <h3 className="font-display font-bold text-lg mb-2">Xác nhận gửi đáp án</h3>
+        <p className="text-sm text-white/60 mb-4">Đội của bạn sẽ gửi đáp án sau. Bạn có chắc chắn không?</p>
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm mb-5 break-words">
+          {answer}
+        </div>
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onCancel} disabled={submitting}>
+            Hủy
+          </button>
+          <button className="btn-primary flex-1" onClick={onConfirm} disabled={submitting}>
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
