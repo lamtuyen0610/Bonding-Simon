@@ -1,20 +1,24 @@
 # syntax=docker/dockerfile:1
 
-# ---------- Stage 1: build frontend ----------
-FROM node:20-alpine AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
-
-# ---------- Stage 2: build backend ----------
+# ---------- Stage 1: build backend ----------
+# Build backend trước để tránh build song song 2 phần cùng lúc (đỡ tốn RAM lúc build).
 FROM node:20-alpine AS backend-build
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm install
 COPY backend/ ./
 RUN npx prisma generate
+RUN npm run build
+
+# ---------- Stage 2: build frontend ----------
+# Phụ thuộc giả vào backend-build (COPY 1 file nhỏ) để ép Docker build tuần tự,
+# không chạy song song 2 stage cùng lúc gây tràn bộ nhớ khi build.
+FROM node:20-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY --from=backend-build /app/backend/package.json /tmp/_seq_dependency.json
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
 RUN npm run build
 
 # ---------- Stage 3: production runtime ----------
