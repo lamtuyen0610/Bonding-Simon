@@ -47,4 +47,4 @@ EXPOSE 4000
 
 # Áp dụng migration rồi khởi động server. Không seed tự động ở đây —
 # chạy seed thủ công 1 lần sau lần deploy đầu tiên (xem README).
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node dist/index.js"]
