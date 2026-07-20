@@ -32,7 +32,6 @@ authRouter.post("/admin/login", async (req, res) => {
 
 const teamJoinSchema = z.object({
   teamName: z.string().min(1, "Vui lòng nhập tên đội."),
-  joinCode: z.string().min(1, "Vui lòng nhập mã đội."),
 });
 
 authRouter.post("/team/join", async (req, res) => {
@@ -40,15 +39,14 @@ authRouter.post("/team/join", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Dữ liệu không hợp lệ." });
   }
-  const joinCode = parsed.data.joinCode.trim().toUpperCase();
-
-  const team = await prisma.team.findUnique({ where: { joinCode } });
-  if (!team) {
-    return res.status(404).json({ error: "Mã đội không hợp lệ. Vui lòng kiểm tra lại với Ban tổ chức." });
-  }
   const normalizedInputName = parsed.data.teamName.trim().toLowerCase();
-  if (normalizedInputName !== team.name.trim().toLowerCase()) {
-    return res.status(400).json({ error: "Tên đội không khớp với mã đội. Vui lòng kiểm tra lại." });
+
+  // Team.name không unique ở tầng DB nên so khớp không phân biệt hoa/thường ở đây.
+  const teams = await prisma.team.findMany();
+  const team = teams.find((t) => t.name.trim().toLowerCase() === normalizedInputName);
+
+  if (!team) {
+    return res.status(404).json({ error: "Không tìm thấy đội với tên này. Vui lòng kiểm tra lại với Ban tổ chức." });
   }
   if (!team.isActive) {
     return res.status(403).json({ error: "Đội này hiện đang bị vô hiệu hóa. Vui lòng liên hệ Ban tổ chức." });
