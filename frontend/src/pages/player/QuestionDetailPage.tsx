@@ -118,11 +118,8 @@ export default function QuestionDetailPage() {
 
       <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
         <div className="card p-6">
-          <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="mb-3">
             <h1 className="text-xl sm:text-2xl font-display font-bold">{question.title}</h1>
-            <span className="pill bg-purple/15 text-purple-soft border border-purple/30 shrink-0">
-              {question.points} điểm
-            </span>
           </div>
           <StatusBadge status={question.status} />
 

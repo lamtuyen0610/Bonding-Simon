@@ -67,10 +67,9 @@ export default function LeaderboardPage() {
                     {e.teamName} {e.teamId === team?.id && <span className="text-turquoise text-xs">(đội bạn)</span>}
                   </p>
                   <p className="text-xs text-white/40">
-                    {e.correctCount} câu đúng {e.isTie && "· Đồng hạng"}
+                    {e.caseDecodedAt ? "Đã giải mã vụ án" : "Chưa giải mã xong"} {e.isTie && "· Đồng hạng"}
                   </p>
                 </div>
-                <div className="text-xl font-display font-bold text-turquoise">{e.totalScore}</div>
               </div>
             ))}
           </div>

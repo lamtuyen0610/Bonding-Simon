@@ -103,17 +103,11 @@ export default function DashboardPage() {
             <p className="eyebrow mb-1">Đội điều tra</p>
             <h1 className="text-xl sm:text-2xl font-display font-bold">{team?.name}</h1>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-xs text-white/40 mb-0.5">Điểm hiện tại</p>
-              <p className="text-2xl font-display font-bold text-turquoise">{data.team.totalScore}</p>
-            </div>
-            {data.game.leaderboardPublished && (
-              <button className="btn-secondary" onClick={() => navigate("/leaderboard")}>
-                <Trophy size={16} /> Xếp hạng
-              </button>
-            )}
-          </div>
+          {data.game.leaderboardPublished && (
+            <button className="btn-secondary" onClick={() => navigate("/leaderboard")}>
+              <Trophy size={16} /> Xếp hạng
+            </button>
+          )}
         </div>
 
         {decoded && (
@@ -197,10 +191,11 @@ export default function DashboardPage() {
                         <ChevronRight size={18} className="text-white/30 shrink-0 mt-0.5 group-hover:text-turquoise transition" />
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <StatusBadge status={q.status} />
-                      <span className="text-xs font-mono text-purple-soft">{q.points} điểm</span>
-                    </div>
+                    {q.status !== "NOT_STARTED" && (
+                      <div className="flex items-center">
+                        <StatusBadge status={q.status} />
+                      </div>
+                    )}
                   </button>
                 ))}
             </div>

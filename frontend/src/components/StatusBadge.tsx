@@ -14,6 +14,7 @@ const CONFIG: Record<QuestionStatus, { label: string; cls: string; icon: ReactNo
 };
 
 export default function StatusBadge({ status }: { status: QuestionStatus }) {
+  if (status === "NOT_STARTED") return null;
   const c = CONFIG[status];
   return (
     <span className={`pill ${c.cls}`}>
