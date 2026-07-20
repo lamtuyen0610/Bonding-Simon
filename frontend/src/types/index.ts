@@ -42,6 +42,7 @@ export interface PlayerMeResponse {
     question7Unlocked: boolean;
     sixTasksCompletedAt: string | null;
     finalQuestionCompletedAt: string | null;
+    caseDecodedAt: string | null;
   };
   game: {
     status: string;
@@ -58,6 +59,7 @@ export interface LeaderboardEntry {
   teamName: string;
   totalScore: number;
   correctCount: number;
+  caseDecodedAt: string | null;
   finalQuestionCompletedAt: string | null;
   sixTasksCompletedAt: string | null;
   status: string;

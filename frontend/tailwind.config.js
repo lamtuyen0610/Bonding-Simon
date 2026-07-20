@@ -2,18 +2,35 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    // Ghi đè toàn bộ thang bo góc mặc định để mọi thứ (card, nút, input...) trở nên
+    // sắc cạnh, vuông vức — đúng tinh thần "hồ sơ giấy / terminal điều tra", không
+    // bo tròn mềm mại kiểu app tiêu dùng thông thường.
+    borderRadius: {
+      none: "0px",
+      sm: "0px",
+      DEFAULT: "0px",
+      md: "0px",
+      lg: "2px",
+      xl: "2px",
+      "2xl": "2px",
+      "3xl": "2px",
+      full: "9999px",
+    },
     extend: {
       colors: {
-        ink: "#0B1020",
-        panel: "#121933",
+        ink: "#0a0a09",
+        panel: "#161513",
+        // "The Burn" — màu nhấn chính: cam cháy/đất nung, dùng cho hành động, cảnh báo, điểm nhấn.
         purple: {
-          DEFAULT: "#7C3AED",
-          soft: "#A78BFA",
+          DEFAULT: "#B5502A",
+          soft: "#E08A5C",
         },
+        // "The Terminal" — xanh thép lạnh, dùng cho trạng thái xác thực/đã kiểm chứng.
         turquoise: {
-          DEFAULT: "#4FD1C5",
-          soft: "#99F6E4",
+          DEFAULT: "#7C97A0",
+          soft: "#AEC3C9",
         },
+        paper: "#DAD5C9",
       },
       fontFamily: {
         display: ["'Space Grotesk'", "system-ui", "sans-serif"],
@@ -21,7 +38,10 @@ export default {
         mono: ["'JetBrains Mono'", "monospace"],
       },
       boxShadow: {
-        card: "0 8px 30px rgba(0,0,0,0.35)",
+        card: "2px 2px 0 rgba(0,0,0,0.4)",
+      },
+      letterSpacing: {
+        widest2: "0.25em",
       },
     },
   },

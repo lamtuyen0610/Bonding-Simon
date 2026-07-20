@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, Sparkles } from "lucide-react";
+import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, Sparkles, KeyRound, PartyPopper } from "lucide-react";
 import Logo from "../../components/Logo";
 import StatusBadge from "../../components/StatusBadge";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const [endingCase, setEndingCase] = useState(false);
+  const [decoding, setDecoding] = useState(false);
 
   if (loading && !data) {
     return (
@@ -47,17 +48,40 @@ export default function DashboardPage() {
   const completedCount = nonFinal.filter(countsTowardCompletion).length;
   const progressPct = Math.round((completedCount / 6) * 100);
   const canEndCase = completedCount === 6 && !!data.team.sixTasksCompletedAt && !data.team.question7Unlocked;
+  const finalAnswered = !!finalQ && !["LOCKED", "NOT_STARTED"].includes(finalQ.status);
+  const canDecode = finalAnswered && !data.team.caseDecodedAt;
+  const decoded = !!data.team.caseDecodedAt;
 
   async function endCase() {
     setEndingCase(true);
     try {
       await api.post("/player/end-case");
-      toast("success", "Vụ án đã kết thúc! Đáp án được tiết lộ và câu hỏi cuối cùng đã mở khóa.");
+      toast("success", "Đã mở khóa câu hỏi cuối cùng!");
       await refresh();
     } catch (err) {
       toast("error", err instanceof ApiError ? err.message : "Không thể kết thúc vụ án. Vui lòng thử lại.");
     } finally {
       setEndingCase(false);
+    }
+  }
+
+  async function decodeCase() {
+    setDecoding(true);
+    try {
+      const res = await api.post<{ allCorrect: boolean }>("/player/decode-case");
+      if (res.allCorrect) {
+        toast("success", "Chính xác toàn bộ! Chúc mừng đội đã giải mã được vụ án 🎉");
+      } else {
+        toast(
+          "error",
+          "Chưa đúng hết. Hãy xem lại các câu ẩn đáp án và Câu hỏi số 7 (giờ có thể sửa lại), rồi thử Giải mã lần nữa."
+        );
+      }
+      await refresh();
+    } catch (err) {
+      toast("error", err instanceof ApiError ? err.message : "Không thể giải mã vụ án. Vui lòng thử lại.");
+    } finally {
+      setDecoding(false);
     }
   }
 
@@ -92,19 +116,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {decoded && (
+          <div className="card p-6 text-center border-turquoise/40 bg-turquoise/5">
+            <PartyPopper className="mx-auto mb-3 text-turquoise" size={28} />
+            <p className="font-semibold mb-1 text-turquoise">Đội của bạn đã giải mã thành công vụ án!</p>
+            <p className="text-sm text-white/60">Chờ Ban tổ chức công bố bảng xếp hạng và diễn biến đầy đủ.</p>
+          </div>
+        )}
+
         {/* Progress bar */}
-        <div className="card p-5">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="text-white/60">Tiến độ 6 nhiệm vụ đầu tiên</span>
-            <span className="font-semibold text-turquoise">{completedCount}/6</span>
+        {!decoded && (
+          <div className="card p-5">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-white/60">Tiến độ 6 nhiệm vụ đầu tiên</span>
+              <span className="font-semibold text-turquoise">{completedCount}/6</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-purple to-turquoise transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-purple to-turquoise transition-all duration-500"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* Waiting banners */}
         {data.game.status === "PAUSED" && (
@@ -115,9 +149,7 @@ export default function DashboardPage() {
           <div className="card p-6 text-center border-purple/40 bg-purple/5">
             <Sparkles className="mx-auto mb-3 text-purple-soft" size={28} />
             <p className="font-semibold mb-1">Đội của bạn đã hoàn thành 6 nhiệm vụ điều tra!</p>
-            <p className="text-sm text-white/60 mb-4">
-              Bấm nút bên dưới để tiết lộ đáp án và mở khóa câu hỏi cuối cùng.
-            </p>
+            <p className="text-sm text-white/60 mb-4">Bấm nút bên dưới để mở khóa câu hỏi cuối cùng.</p>
             <button className="btn-primary mx-auto" onClick={endCase} disabled={endingCase}>
               {endingCase ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
               Kết thúc vụ án
@@ -125,42 +157,58 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Task list */}
-        <div>
-          <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-3">
-            Bảng điều tra — 6 nhiệm vụ
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {nonFinal
-              .sort((a, b) => a.order - b.order)
-              .map((q) => (
-                <button
-                  key={q.id}
-                  disabled={q.locked}
-                  onClick={() => navigate(`/question/${q.id}`)}
-                  className={`card p-4 text-left transition group ${
-                    q.locked ? "opacity-50 cursor-not-allowed" : "hover:border-turquoise/40 hover:-translate-y-0.5"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-semibold text-white leading-snug">{q.title}</h3>
-                    {q.locked ? (
-                      <Lock size={16} className="text-white/30 shrink-0 mt-0.5" />
-                    ) : (
-                      <ChevronRight size={18} className="text-white/30 shrink-0 mt-0.5 group-hover:text-turquoise transition" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <StatusBadge status={q.status} />
-                    <span className="text-xs font-mono text-purple-soft">{q.points} điểm</span>
-                  </div>
-                </button>
-              ))}
+        {canDecode && (
+          <div className="card p-6 text-center border-purple/40 bg-purple/5">
+            <KeyRound className="mx-auto mb-3 text-purple-soft" size={28} />
+            <p className="font-semibold mb-1">Đội đã trả lời xong câu hỏi cuối cùng!</p>
+            <p className="text-sm text-white/60 mb-4">
+              Bấm "Giải mã vụ án" để kiểm tra toàn bộ đáp án. Nếu có câu sai, đội sẽ được quay lại sửa và thử lại.
+            </p>
+            <button className="btn-primary mx-auto" onClick={decodeCase} disabled={decoding}>
+              {decoding ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+              Giải mã vụ án
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* Task list */}
+        {!decoded && (
+          <div>
+            <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-3">
+              Bảng điều tra — 6 nhiệm vụ
+            </h2>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {nonFinal
+                .sort((a, b) => a.order - b.order)
+                .map((q) => (
+                  <button
+                    key={q.id}
+                    disabled={q.locked}
+                    onClick={() => navigate(`/question/${q.id}`)}
+                    className={`card p-4 text-left transition group ${
+                      q.locked ? "opacity-50 cursor-not-allowed" : "hover:border-turquoise/40 hover:-translate-y-0.5"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-white leading-snug">{q.title}</h3>
+                      {q.locked ? (
+                        <Lock size={16} className="text-white/30 shrink-0 mt-0.5" />
+                      ) : (
+                        <ChevronRight size={18} className="text-white/30 shrink-0 mt-0.5 group-hover:text-turquoise transition" />
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <StatusBadge status={q.status} />
+                      <span className="text-xs font-mono text-purple-soft">{q.points} điểm</span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Question 7 */}
-        {finalQ && (
+        {finalQ && !decoded && (
           <div>
             <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-3">
               Câu hỏi cuối cùng

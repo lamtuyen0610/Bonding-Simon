@@ -7,37 +7,66 @@
     @apply scroll-smooth;
   }
   body {
-    background-color: #0b1020;
+    background-color: #0a0a09;
     background-image:
-      radial-gradient(circle at 15% 10%, rgba(124, 58, 237, 0.18), transparent 40%),
-      radial-gradient(circle at 85% 0%, rgba(79, 209, 197, 0.12), transparent 45%);
+      linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
     min-height: 100vh;
   }
   ::selection {
-    background: rgba(124, 58, 237, 0.4);
+    background: rgba(181, 80, 42, 0.4);
   }
 }
 
 @layer components {
+  /* Bảng/thẻ nội dung: phẳng, viền mảnh 1px, không bo góc, không đổ bóng mềm mại kiểu app tiêu dùng. */
   .card {
-    @apply bg-panel/80 border border-white/10 rounded-2xl shadow-card backdrop-blur-sm;
+    @apply bg-panel border border-white/10 shadow-card;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-purple px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-soft hover:text-ink active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 border border-purple bg-purple px-5 py-3 text-xs font-mono font-bold uppercase tracking-widest text-ink transition hover:bg-ink hover:text-purple active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-turquoise/60 hover:text-turquoise active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 border border-white/25 bg-transparent px-5 py-3 text-xs font-mono font-bold uppercase tracking-widest text-white/70 transition hover:border-paper hover:bg-paper hover:text-ink active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 border border-red-900 bg-red-950/60 px-5 py-3 text-xs font-mono font-bold uppercase tracking-widest text-red-300 transition hover:bg-red-900 hover:text-red-100 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
   }
   .input-field {
-    @apply w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/30 outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/30;
+    @apply w-full border border-white/15 bg-black/40 px-4 py-3 font-mono text-white placeholder-white/25 outline-none transition focus:border-turquoise focus:ring-1 focus:ring-turquoise/40;
   }
   .eyebrow {
-    @apply text-xs font-mono uppercase tracking-[0.2em] text-turquoise/80;
+    @apply text-[11px] font-mono uppercase tracking-widest2 text-turquoise/70;
   }
   .pill {
-    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 border px-3 py-1 font-mono text-[11px] uppercase tracking-wider;
+  }
+  /* Nhãn tọa độ góc màn hình - gợi cảm giác terminal điều tra / hệ thống giám sát. */
+  .corner-label {
+    @apply pointer-events-none fixed z-40 font-mono text-[10px] uppercase tracking-widest text-white/20;
+  }
+  /* Hiệu ứng vệt quét CRT nhẹ phủ toàn màn hình, không ảnh hưởng thao tác. */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.5;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.06) 3px
+    );
+    mix-blend-mode: multiply;
+  }
+  /* Khối "đã che giấu" - dùng cho nội dung chưa được phép xem, hiện chữ khi hover (desktop). */
+  .redacted-bar {
+    @apply select-none bg-white/10 text-transparent;
+  }
+  /* Nhãn kiểu con dấu "MẬT" xoay nhẹ, dùng nhấn mạnh trạng thái quan trọng. */
+  .case-stamp {
+    @apply inline-block -rotate-3 border-2 border-purple px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-purple;
   }
 }
