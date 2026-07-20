@@ -30,14 +30,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4000
 
-# Chỉ cài dependency production (bỏ devDependencies để image nhẹ hơn)
-COPY backend/package*.json ./
-RUN npm install --omit=dev
-
-# Mã đã build của backend + schema Prisma cần cho migrate/generate lúc chạy
-COPY --from=backend-build /app/backend/dist ./dist
-COPY --from=backend-build /app/backend/prisma ./prisma
-COPY --from=backend-build /app/backend/node_modules/.prisma ./node_modules/.prisma
+# Copy toàn bộ backend đã build (node_modules đầy đủ, dist, prisma, src, package.json).
+# Giữ luôn cả devDependencies + src/ để có thể chạy lệnh seed (npx tsx prisma/seed.ts)
+# trực tiếp trong container qua Railway Console mà không cần bước cài đặt riêng.
+COPY --from=backend-build /app/backend ./
 
 # Giao diện đã build -> backend tự phục vụ tại cùng 1 cổng (xem src/app.ts)
 COPY --from=frontend-build /app/frontend/dist ./public
@@ -47,6 +43,8 @@ RUN mkdir -p /data
 
 EXPOSE 4000
 
-# Áp dụng migration rồi khởi động server. Không seed tự động ở đây —
-# chạy seed thủ công 1 lần sau lần deploy đầu tiên (xem README).
+# Đồng bộ schema trực tiếp vào database rồi khởi động server. Dùng "db push" thay vì
+# "migrate deploy" vì repo này chưa có sẵn thư mục prisma/migrations — "db push" tạo bảng
+# thẳng từ schema.prisma, không cần file migration. Không seed tự động ở đây —
+# chạy seed thủ công 1 lần qua Railway Console (xem README).
 CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node dist/index.js"]

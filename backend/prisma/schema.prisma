@@ -76,8 +76,11 @@ model Question {
   description        String
   points             Int
   order              Int
-  type               String   @default("TEXT")
+  type               String   @default("TEXT") // TEXT | SAFE_DIAL | MULTIPLE_CHOICE
   validationMode     String   @default("AUTO")
+  revealMode         String   @default("IMMEDIATE") // IMMEDIATE: báo đúng/sai ngay | DEFERRED: chỉ tiết lộ khi "Kết thúc vụ án"
+  options            String?  // JSON array các lựa chọn, dùng cho type MULTIPLE_CHOICE
+  successMessage     String?  // Thông báo tùy chỉnh hiển thị khi trả lời đúng (chỉ áp dụng revealMode = IMMEDIATE)
   isFinalQuestion    Boolean  @default(false)
   isActive           Boolean  @default(true)
   allowRetryDefault  Boolean  @default(true)

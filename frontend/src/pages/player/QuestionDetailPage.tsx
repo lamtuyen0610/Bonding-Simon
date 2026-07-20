@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Send, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Send, Loader2, ShieldAlert, PartyPopper } from "lucide-react";
 import { usePlayerState } from "../../hooks/usePlayerState";
 import { api, ApiError } from "../../api/client";
 import { useToast } from "../../contexts/ToastContext";
 import StatusBadge from "../../components/StatusBadge";
 import SafeDial from "../../components/SafeDial";
+import MultipleChoice from "../../components/MultipleChoice";
 
 export default function QuestionDetailPage() {
   const { questionId } = useParams();
@@ -19,6 +20,7 @@ export default function QuestionDetailPage() {
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
+  const [successModal, setSuccessModal] = useState<string | null>(null);
 
   useEffect(() => {
     if (question) {
@@ -26,11 +28,11 @@ export default function QuestionDetailPage() {
     }
   }, [question?.id]);
 
-  // Lưu nháp tự động khi người dùng gõ (debounce nhẹ), tránh mất câu trả lời nếu mất kết nối/refresh.
+  // Lưu nháp tự động khi người dùng gõ (chỉ áp dụng cho câu dạng nhập chữ tự do).
   useEffect(() => {
-    if (!question || question.type === "SAFE_DIAL") return;
+    if (!question || question.type !== "TEXT") return;
     if (answer === (question.draftAnswer ?? question.lastAnswer ?? "")) return;
-    if (["CORRECT", "PENDING_REVIEW"].includes(question.status)) return;
+    if (["CORRECT", "PENDING_REVIEW", "ANSWERED"].includes(question.status)) return;
     const timer = setTimeout(async () => {
       if (!answer.trim()) return;
       setDraftSaving(true);
@@ -66,26 +68,36 @@ export default function QuestionDetailPage() {
     );
   }
 
-  const canSubmit = !["CORRECT", "PENDING_REVIEW"].includes(question.status);
+  const canSubmit = !["CORRECT", "PENDING_REVIEW", "ANSWERED"].includes(question.status);
 
   async function doSubmit(finalAnswer: string) {
     if (!question) return;
     setSubmitting(true);
     try {
-      const res = await api.post<{ submission: { status: string } }>("/player/answers/submit", {
+      const res = await api.post<{
+        submission: { status: string; successMessage?: string | null };
+      }>("/player/answers/submit", {
         questionId: question.id,
         answer: finalAnswer,
       });
       if (res.submission.status === "CORRECT") {
-        toast("success", "Chính xác! Điểm đã được cộng.");
+        if (res.submission.successMessage) {
+          setSuccessModal(res.submission.successMessage);
+        } else {
+          toast("success", "Chính xác! Điểm đã được cộng.");
+        }
       } else if (res.submission.status === "INCORRECT") {
-        toast("error", "Đáp án chưa đúng.");
+        toast("error", "Đáp án chưa đúng, thử lại nhé.");
+      } else if (res.submission.status === "ANSWERED") {
+        toast("info", "Đã ghi nhận đáp án. Kết quả sẽ được tiết lộ sau khi kết thúc vụ án.");
       } else {
         toast("info", "Đã gửi đáp án. Đang chờ Ban tổ chức kiểm tra.");
       }
       await refresh();
       setConfirming(false);
-      if (question.type !== "SAFE_DIAL") navigate("/dashboard");
+      if (question.type !== "SAFE_DIAL" && !res.submission.successMessage) {
+        navigate("/dashboard");
+      }
     } catch (err) {
       toast("error", err instanceof ApiError ? err.message : "Không thể gửi đáp án. Vui lòng thử lại.");
     } finally {
@@ -118,6 +130,16 @@ export default function QuestionDetailPage() {
             <p className="mt-5 text-white/80 leading-relaxed whitespace-pre-line">{question.description}</p>
           )}
 
+          {question.status === "ANSWERED" && (
+            <div className="mt-4 rounded-xl border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
+              <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+              <span>
+                Đội của bạn đã trả lời: <b>{question.lastAnswer}</b>. Đúng hay sai sẽ được tiết lộ sau khi cả đội
+                hoàn thành đủ 6 nhiệm vụ và bấm "Kết thúc vụ án".
+              </span>
+            </div>
+          )}
+
           {question.adminNote && (
             <div className="mt-4 rounded-xl border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
               <ShieldAlert size={16} className="shrink-0 mt-0.5" />
@@ -135,6 +157,24 @@ export default function QuestionDetailPage() {
             disabled={submitting || !canSubmit}
             onSubmit={(code) => doSubmit(code)}
           />
+        ) : question.type === "MULTIPLE_CHOICE" && question.options ? (
+          <div className="card p-6 space-y-5">
+            <MultipleChoice
+              options={question.options}
+              value={answer || null}
+              onChange={setAnswer}
+              disabled={!canSubmit}
+            />
+            {canSubmit && (
+              <button
+                className="btn-primary w-full"
+                disabled={!answer || submitting}
+                onClick={() => setConfirming(true)}
+              >
+                <Send size={16} /> Gửi đáp án
+              </button>
+            )}
+          </div>
         ) : (
           <div className="card p-6 space-y-4">
             <label className="text-sm text-white/60">Đáp án của đội</label>
@@ -165,6 +205,16 @@ export default function QuestionDetailPage() {
           submitting={submitting}
           onCancel={() => setConfirming(false)}
           onConfirm={() => doSubmit(answer)}
+        />
+      )}
+
+      {successModal && (
+        <SuccessModal
+          message={successModal}
+          onClose={() => {
+            setSuccessModal(null);
+            navigate("/dashboard");
+          }}
         />
       )}
     </div>
@@ -198,6 +248,23 @@ function ConfirmDialog({
             {submitting ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SuccessModal({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+      <div className="card p-6 w-full max-w-md border-turquoise/40">
+        <div className="flex items-center gap-2 mb-3 text-turquoise">
+          <PartyPopper size={20} />
+          <h3 className="font-display font-bold text-lg">Chính xác!</h3>
+        </div>
+        <p className="text-white/85 leading-relaxed mb-6 whitespace-pre-line">{message}</p>
+        <button className="btn-primary w-full" onClick={onClose}>
+          Tiếp tục điều tra
+        </button>
       </div>
     </div>
   );

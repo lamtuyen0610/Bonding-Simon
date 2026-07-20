@@ -6,7 +6,7 @@ import { requireTeam } from "../middleware/auth";
 import { normalizeAnswer } from "../utils/normalize";
 import {
   computeQuestionStateForTeam,
-  computeTotalScore,
+  computeVisibleTotalScore,
   maybeAdvanceToWaitingForFinal,
 } from "../services/gameLogic";
 import { getIO, ROOMS, EVENTS } from "../sockets/io";
@@ -39,7 +39,7 @@ playerRouter.get("/me", async (req, res) => {
     orderBy: { order: "asc" },
   });
 
-  // Câu hỏi số 7 hoàn toàn ẩn khỏi payload cho đến khi Admin mở khóa,
+  // Câu hỏi số 7 hoàn toàn ẩn khỏi payload cho đến khi đội bấm "Kết thúc vụ án",
   // không chỉ "locked" - để không thể dò ra nội dung qua devtools.
   const visibleQuestions = questions.filter((q) => !q.isFinalQuestion || team.question7Unlocked);
 
@@ -52,7 +52,7 @@ playerRouter.get("/me", async (req, res) => {
       id: team.id,
       name: team.name,
       status: team.status,
-      totalScore: computeTotalScore(team.submissions),
+      totalScore: computeVisibleTotalScore(team, questions, team.submissions),
       clue1Delivered: team.clue1Delivered,
       clue2Delivered: team.clue2Delivered,
       question7Unlocked: team.question7Unlocked,
@@ -142,16 +142,25 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
   }
 
   const existingReal = team.submissions.filter((s) => s.questionId === questionId && !s.isDraft);
-  const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
-  if (lastCorrect) {
-    return res.status(409).json({ error: "Câu hỏi này đã được trả lời đúng và không thể gửi lại." });
-  }
-  const lastAny = existingReal.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())[0];
-  if (lastAny && lastAny.status === "PENDING_REVIEW") {
-    return res.status(409).json({ error: "Đáp án trước của bạn đang chờ Ban tổ chức kiểm tra." });
-  }
-  if (lastAny && lastAny.status === "INCORRECT") {
-    return res.status(403).json({ error: "Đáp án đã sai và chưa được phép trả lời lại." });
+
+  if (question.revealMode === "DEFERRED") {
+    // Câu ẩn đáp án: chỉ được gửi 1 lần duy nhất, không có cơ chế trả lời lại
+    // (vì người chơi không biết đúng/sai để mà sửa).
+    if (existingReal.length > 0) {
+      return res.status(409).json({ error: "Câu hỏi này đã được trả lời và không thể gửi lại." });
+    }
+  } else {
+    const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
+    if (lastCorrect) {
+      return res.status(409).json({ error: "Câu hỏi này đã được trả lời đúng và không thể gửi lại." });
+    }
+    const lastAny = existingReal.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())[0];
+    if (lastAny && lastAny.status === "PENDING_REVIEW") {
+      return res.status(409).json({ error: "Đáp án trước của bạn đang chờ Ban tổ chức kiểm tra." });
+    }
+    if (lastAny && lastAny.status === "INCORRECT" && !question.allowRetryDefault) {
+      return res.status(403).json({ error: "Đáp án đã sai và chưa được phép trả lời lại." });
+    }
   }
 
   // Xóa nháp sau khi gửi chính thức
@@ -181,8 +190,13 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
     },
   });
 
-    if (status === "CORRECT") {
+  if (status === "CORRECT") {
     await onCorrectAnswer(teamId, question.code);
+  }
+  if (question.revealMode === "DEFERRED") {
+    // Câu ẩn đáp án tính là "đã hoàn thành" ngay khi gửi (đúng hay sai chưa biết),
+    // nên vẫn cần kiểm tra tiến độ 6/6 dù không phải CORRECT.
+    await maybeAdvanceToWaitingForFinal(teamId);
   }
 
   const io = getIO();
@@ -192,23 +206,76 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
     io.to(ROOMS.admin).emit(EVENTS.ADMIN_REVIEW_QUEUE_UPDATED, { teamId });
   }
 
+  // Với câu ẩn đáp án, không trả trạng thái đúng/sai thật về cho client.
+  const responseStatus = question.revealMode === "DEFERRED" ? "ANSWERED" : status;
+
   res.json({
     submission: {
       id: submission.id,
-      status: submission.status,
-      awardedPoints: submission.awardedPoints,
+      status: responseStatus,
+      awardedPoints: question.revealMode === "DEFERRED" ? 0 : submission.awardedPoints,
+      successMessage: status === "CORRECT" && question.revealMode !== "DEFERRED" ? question.successMessage : null,
     },
   });
 });
 
 /**
- * Xử lý các hệ quả khi 1 đáp án được xác nhận đúng (tự động hoặc do Admin chấm):
- * - Câu TOY đúng -> đội đủ điều kiện nhận Tập hồ sơ số 1 (Admin xác nhận giao riêng)
- * - Câu SAFE đúng -> đội đủ điều kiện nhận Tập hồ sơ số 2 (Admin xác nhận giao riêng)
- * - Kiểm tra xem đã đủ 6/6 nhiệm vụ chưa để chuyển trạng thái chờ câu 7
+ * Đội tự bấm "Kết thúc vụ án" sau khi đã hoàn thành đủ 6/6 nhiệm vụ.
+ * Hành động này thay thế bước "Admin mở khóa câu hỏi số 7" trong thiết kế gốc —
+ * đội tự mở khóa câu hỏi cuối cùng cho chính mình khi đã sẵn sàng.
+ * Đồng thời đây cũng là mốc "tiết lộ" đáp án đúng/sai cho các câu revealMode = DEFERRED.
+ */
+playerRouter.post("/end-case", async (req, res) => {
+  const teamId = req.team!.teamId;
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team) return res.status(404).json({ error: "Không tìm thấy đội." });
+
+  if (!team.sixTasksCompletedAt) {
+    return res.status(400).json({ error: "Đội chưa hoàn thành đủ 6/6 nhiệm vụ điều tra." });
+  }
+
+  if (!team.question7Unlocked) {
+    await prisma.team.update({
+      where: { id: teamId },
+      data: {
+        question7Unlocked: true,
+        question7UnlockedAt: new Date(),
+        question7UnlockedBy: "player:self",
+      },
+    });
+    const io = getIO();
+    io.to(ROOMS.team(teamId)).emit(EVENTS.QUESTION7_UNLOCKED, {});
+    io.to(ROOMS.team(teamId)).emit(EVENTS.TEAM_UPDATED, { reason: "end_case" });
+    io.to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, { teamId });
+  }
+
+  res.json({ ok: true });
+});
+
+/**
+ * Xử lý các hệ quả khi 1 đáp án được xác nhận đúng:
+ * - Câu TOY đúng -> tự động cấp Tập hồ sơ số 1
+ * - Câu SAFE đúng -> tự động cấp Tập hồ sơ số 2
+ * - Kiểm tra xem đã đủ 6/6 nhiệm vụ chưa để chuyển trạng thái chờ kết thúc vụ án
  */
 export async function onCorrectAnswer(teamId: string, questionCode: string) {
   await maybeAdvanceToWaitingForFinal(teamId);
+
+  if (questionCode === "TOY") {
+    await prisma.team.update({
+      where: { id: teamId },
+      data: { clue1Delivered: true, clue1DeliveredAt: new Date(), clue1DeliveredBy: "system:auto" },
+    });
+    getIO().to(ROOMS.team(teamId)).emit(EVENTS.CLUE_DELIVERED, { clue: 1 });
+  }
+
+  if (questionCode === "SAFE") {
+    await prisma.team.update({
+      where: { id: teamId },
+      data: { clue2Delivered: true, clue2DeliveredAt: new Date(), clue2DeliveredBy: "system:auto" },
+    });
+    getIO().to(ROOMS.team(teamId)).emit(EVENTS.CLUE_DELIVERED, { clue: 2 });
+  }
 
   if (questionCode === "FINAL") {
     await prisma.team.update({

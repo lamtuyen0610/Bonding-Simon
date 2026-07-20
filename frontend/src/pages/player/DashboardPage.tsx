@@ -1,15 +1,28 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Trophy, FileStack, Loader2, ChevronRight, Lock } from "lucide-react";
+import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, Sparkles } from "lucide-react";
 import Logo from "../../components/Logo";
 import StatusBadge from "../../components/StatusBadge";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
 import { usePlayerState } from "../../hooks/usePlayerState";
+import { api, ApiError } from "../../api/client";
+import { useToast } from "../../contexts/ToastContext";
+import { PlayerQuestion } from "../../types";
+
+function countsTowardCompletion(q: PlayerQuestion): boolean {
+  if (q.revealMode === "DEFERRED") {
+    return !["LOCKED", "NOT_STARTED", "DRAFT_SAVED"].includes(q.status);
+  }
+  return q.status === "CORRECT";
+}
 
 export default function DashboardPage() {
   const { team, logout } = useTeamAuth();
-  const { data, loading, error } = usePlayerState();
+  const { data, loading, error, refresh } = usePlayerState();
   const navigate = useNavigate();
+  const toast = useToast();
+  const [endingCase, setEndingCase] = useState(false);
 
   if (loading && !data) {
     return (
@@ -31,8 +44,22 @@ export default function DashboardPage() {
 
   const nonFinal = data.questions.filter((q) => !q.isFinalQuestion);
   const finalQ = data.questions.find((q) => q.isFinalQuestion);
-  const completedCount = nonFinal.filter((q) => q.status === "CORRECT").length;
+  const completedCount = nonFinal.filter(countsTowardCompletion).length;
   const progressPct = Math.round((completedCount / 6) * 100);
+  const canEndCase = completedCount === 6 && !!data.team.sixTasksCompletedAt && !data.team.question7Unlocked;
+
+  async function endCase() {
+    setEndingCase(true);
+    try {
+      await api.post("/player/end-case");
+      toast("success", "Vụ án đã kết thúc! Đáp án được tiết lộ và câu hỏi cuối cùng đã mở khóa.");
+      await refresh();
+    } catch (err) {
+      toast("error", err instanceof ApiError ? err.message : "Không thể kết thúc vụ án. Vui lòng thử lại.");
+    } finally {
+      setEndingCase(false);
+    }
+  }
 
   return (
     <div className="min-h-screen pb-16">
@@ -83,7 +110,20 @@ export default function DashboardPage() {
         {data.game.status === "PAUSED" && (
           <Banner tone="warn">Trò chơi đang tạm dừng. Vui lòng chờ Ban tổ chức tiếp tục.</Banner>
         )}
-        <ClueBanners data={data} />
+
+        {canEndCase && (
+          <div className="card p-6 text-center border-purple/40 bg-purple/5">
+            <Sparkles className="mx-auto mb-3 text-purple-soft" size={28} />
+            <p className="font-semibold mb-1">Đội của bạn đã hoàn thành 6 nhiệm vụ điều tra!</p>
+            <p className="text-sm text-white/60 mb-4">
+              Bấm nút bên dưới để tiết lộ đáp án và mở khóa câu hỏi cuối cùng.
+            </p>
+            <button className="btn-primary mx-auto" onClick={endCase} disabled={endingCase}>
+              {endingCase ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
+              Kết thúc vụ án
+            </button>
+          </div>
+        )}
 
         {/* Task list */}
         <div>
@@ -138,14 +178,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {completedCount === 6 && !finalQ && (
-          <div className="card p-6 text-center border-purple/30">
-            <FileStack className="mx-auto mb-3 text-purple-soft" size={28} />
-            <p className="font-semibold mb-1">Đội của bạn đã hoàn thành 6 nhiệm vụ điều tra.</p>
-            <p className="text-sm text-white/60">Hãy liên hệ Ban tổ chức để nhận câu hỏi cuối cùng.</p>
-          </div>
-        )}
-
         {data.game.storyPublished && (
           <button className="btn-secondary w-full" onClick={() => navigate("/story")}>
             Xem diễn biến vụ án
@@ -154,37 +186,6 @@ export default function DashboardPage() {
       </main>
     </div>
   );
-}
-
-function ClueBanners({ data }: { data: ReturnType<typeof usePlayerState>["data"] }) {
-  if (!data) return null;
-  const toy = data.questions.find((q) => q.code === "TOY");
-  const safe = data.questions.find((q) => q.code === "SAFE");
-  const banners: JSX.Element[] = [];
-
-  if (toy?.status === "CORRECT" && !data.team.clue1Delivered) {
-    banners.push(
-      <Banner key="clue1" tone="info">
-        Đáp án chính xác! Hãy liên hệ Ban tổ chức để nhận <b>Tập hồ sơ số 1</b>.
-      </Banner>
-    );
-  }
-  if (safe?.status === "CORRECT" && !data.team.clue2Delivered) {
-    banners.push(
-      <Banner key="clue2" tone="info">
-        Két sắt đã được mở! Hãy liên hệ Ban tổ chức để nhận <b>Tập hồ sơ số 2</b>.
-      </Banner>
-    );
-  }
-  if (data.team.status === "WAITING_FOR_Q7" && !data.team.question7Unlocked) {
-    banners.push(
-      <Banner key="q7" tone="success">
-        Đội của bạn đã hoàn thành 6 nhiệm vụ điều tra. Hãy liên hệ Ban tổ chức để nhận câu hỏi cuối cùng.
-      </Banner>
-    );
-  }
-  if (banners.length === 0) return null;
-  return <div className="space-y-3">{banners}</div>;
 }
 
 function Banner({ tone, children }: { tone: "info" | "success" | "warn"; children: ReactNode }) {

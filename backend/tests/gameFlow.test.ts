@@ -22,20 +22,11 @@ describe("Flow điều tra KHỞI NGUỒN", () => {
     expect(fireQuestion.locked).toBe(false);
   });
 
-  it("Scenario 2 & 3 & 4: nhận Tập hồ sơ số 1, mở két sắt, nhận Tập hồ sơ số 2", async () => {
-    const { team, admin } = await seedMinimalGame();
+  it("Scenario 2 & 3 & 4: tự động cấp Tập hồ sơ số 1 và số 2 khi trả lời đúng", async () => {
+    const { team } = await seedMinimalGame();
     const tToken = await teamToken(team.id, team.name);
-    const aToken = await adminToken(admin.id, admin.username);
 
-    // Trả lời đúng vị trí đồ chơi (chuẩn hóa "  p5 " -> khớp "P5")
-    const toyQ = await prisma.question.findUniqueOrThrow({ where: { code: "TOY" } });
-    const submitToy = await request(app)
-      .post("/api/player/answers/submit")
-      .set("Authorization", `Bearer ${tToken}`)
-      .send({ questionId: toyQ.id, answer: "  p5 " });
-    expect(submitToy.body.submission.status).toBe("CORRECT");
-
-    // Chưa nhận hồ sơ 1 -> không thể mở két sắt
+    // Chưa trả lời đúng đồ chơi -> chưa có hồ sơ 1 -> không thể mở két sắt
     const safeQ = await prisma.question.findUniqueOrThrow({ where: { code: "SAFE" } });
     const blockedSafe = await request(app)
       .post("/api/player/answers/submit")
@@ -43,28 +34,45 @@ describe("Flow điều tra KHỞI NGUỒN", () => {
       .send({ questionId: safeQ.id, answer: "1234" });
     expect(blockedSafe.status).toBe(403);
 
-    // Admin xác nhận đã giao Tập hồ sơ số 1
-    const deliver1 = await request(app)
-      .post(`/api/admin/teams/${team.id}/deliver-clue1`)
-      .set("Authorization", `Bearer ${aToken}`);
-    expect(deliver1.status).toBe(200);
-    expect(deliver1.body.team.clue1Delivered).toBe(true);
+    // Trả lời đúng vị trí đồ chơi (chuẩn hóa "  p5 " -> khớp "P5") -> tự động nhận hồ sơ 1
+    const toyQ = await prisma.question.findUniqueOrThrow({ where: { code: "TOY" } });
+    const submitToy = await request(app)
+      .post("/api/player/answers/submit")
+      .set("Authorization", `Bearer ${tToken}`)
+      .send({ questionId: toyQ.id, answer: "  p5 " });
+    expect(submitToy.body.submission.status).toBe("CORRECT");
 
-    // Bây giờ có thể xoay két sắt
+    const teamAfterToy = await prisma.team.findUniqueOrThrow({ where: { id: team.id } });
+    expect(teamAfterToy.clue1Delivered).toBe(true);
+
+    // Bây giờ có thể xoay két sắt -> đúng sẽ tự động nhận hồ sơ 2
     const submitSafe = await request(app)
       .post("/api/player/answers/submit")
       .set("Authorization", `Bearer ${tToken}`)
       .send({ questionId: safeQ.id, answer: "1234" });
     expect(submitSafe.body.submission.status).toBe("CORRECT");
 
-    // Admin xác nhận đã giao Tập hồ sơ số 2
+    const teamAfterSafe = await prisma.team.findUniqueOrThrow({ where: { id: team.id } });
+    expect(teamAfterSafe.clue2Delivered).toBe(true);
+  });
+
+  it("Scenario 2b (cũ): Admin vẫn có thể giao hồ sơ thủ công để ghi đè/hỗ trợ", async () => {
+    const { team, admin } = await seedMinimalGame();
+    const aToken = await adminToken(admin.id, admin.username);
+
+    const deliver1 = await request(app)
+      .post(`/api/admin/teams/${team.id}/deliver-clue1`)
+      .set("Authorization", `Bearer ${aToken}`);
+    expect(deliver1.status).toBe(200);
+    expect(deliver1.body.team.clue1Delivered).toBe(true);
+
     const deliver2 = await request(app)
       .post(`/api/admin/teams/${team.id}/deliver-clue2`)
       .set("Authorization", `Bearer ${aToken}`);
     expect(deliver2.body.team.clue2Delivered).toBe(true);
   });
 
-  it("Scenario 5 & 6 & 7: câu hỏi số 7 chỉ mở sau khi đủ 6/6 và Admin xác nhận", async () => {
+  it("Scenario 5 & 6 & 7: câu hỏi số 7 chỉ mở sau khi đủ 6/6 và đội tự bấm Kết thúc vụ án", async () => {
     const { team, admin } = await seedMinimalGame();
     const tToken = await teamToken(team.id, team.name);
     const aToken = await adminToken(admin.id, admin.username);
@@ -81,10 +89,9 @@ describe("Flow điều tra KHỞI NGUỒN", () => {
       .send({ questionId: finalQ.id, answer: "ai đó" });
     expect(blockedFinal.status).toBe(403);
 
-    // Hoàn thành lần lượt: TOY, SAFE (cần hồ sơ 1), rồi 4 câu MANUAL còn lại qua Admin chấm
+    // Hoàn thành lần lượt: TOY, SAFE (tự động nhận hồ sơ 1), rồi 4 câu MANUAL còn lại qua Admin chấm
     const toyQ = await prisma.question.findUniqueOrThrow({ where: { code: "TOY" } });
     await request(app).post("/api/player/answers/submit").set("Authorization", `Bearer ${tToken}`).send({ questionId: toyQ.id, answer: "P5" });
-    await request(app).post(`/api/admin/teams/${team.id}/deliver-clue1`).set("Authorization", `Bearer ${aToken}`);
     const safeQ = await prisma.question.findUniqueOrThrow({ where: { code: "SAFE" } });
     await request(app).post("/api/player/answers/submit").set("Authorization", `Bearer ${tToken}`).send({ questionId: safeQ.id, answer: "1234" });
 
@@ -104,7 +111,7 @@ describe("Flow điều tra KHỞI NGUỒN", () => {
         .send({ decision: "CORRECT" });
     }
 
-    // Sau 6/6, đội chuyển trạng thái chờ, câu 7 vẫn chưa hiện cho tới khi Admin mở khóa
+    // Sau 6/6, đội chuyển trạng thái chờ, câu 7 vẫn chưa hiện cho tới khi tự bấm "Kết thúc vụ án"
     const teamAfter6 = await prisma.team.findUniqueOrThrow({ where: { id: team.id } });
     expect(teamAfter6.sixTasksCompletedAt).not.toBeNull();
     expect(teamAfter6.status).toBe("WAITING_FOR_Q7");
@@ -113,11 +120,11 @@ describe("Flow điều tra KHỞI NGUỒN", () => {
     const meAfter6 = await request(app).get("/api/player/me").set("Authorization", `Bearer ${tToken}`);
     expect(meAfter6.body.questions.some((q: any) => q.isFinalQuestion)).toBe(false);
 
-    // Admin mở khóa câu 7
-    const unlock = await request(app)
-      .post(`/api/admin/teams/${team.id}/unlock-question7`)
-      .set("Authorization", `Bearer ${aToken}`);
-    expect(unlock.status).toBe(200);
+    // Đội tự bấm "Kết thúc vụ án" để mở khóa câu 7
+    const endCase = await request(app)
+      .post("/api/player/end-case")
+      .set("Authorization", `Bearer ${tToken}`);
+    expect(endCase.status).toBe(200);
 
     const meAfterUnlock = await request(app).get("/api/player/me").set("Authorization", `Bearer ${tToken}`);
     expect(meAfterUnlock.body.questions.some((q: any) => q.isFinalQuestion)).toBe(true);

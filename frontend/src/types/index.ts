@@ -3,6 +3,7 @@ export type QuestionStatus =
   | "NOT_STARTED"
   | "DRAFT_SAVED"
   | "PENDING_REVIEW"
+  | "ANSWERED"
   | "CORRECT"
   | "INCORRECT"
   | "RETRY_ALLOWED";
@@ -13,12 +14,15 @@ export interface PlayerQuestion {
   title: string;
   points: number;
   order: number;
-  type: "TEXT" | "SAFE_DIAL";
+  type: "TEXT" | "SAFE_DIAL" | "MULTIPLE_CHOICE";
+  revealMode: "IMMEDIATE" | "DEFERRED";
   isFinalQuestion: boolean;
   locked: boolean;
   status: QuestionStatus;
   description: string | null;
+  options: string[] | null;
   safeDialConfig: { digits: number; minDigit: number; maxDigit: number } | null;
+  successMessage: string | null;
   draftAnswer: string | null;
   lastAnswer: string | null;
   awardedPoints: number;

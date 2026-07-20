@@ -136,7 +136,7 @@ export default function TeamDetailPage() {
               {team.question7Unlocked
                 ? "Đã mở khóa cho đội này."
                 : team.sixTasksCompletedAt
-                ? "Đội đã hoàn thành 6/6 nhiệm vụ — sẵn sàng mở khóa."
+                ? "Đội đã hoàn thành 6/6 nhiệm vụ — đội có thể tự bấm \"Kết thúc vụ án\", hoặc Admin mở khóa hộ ở đây."
                 : "Đội chưa hoàn thành đủ 6/6 nhiệm vụ."}
             </p>
           </div>

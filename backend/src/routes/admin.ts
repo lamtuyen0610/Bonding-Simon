@@ -404,7 +404,11 @@ const questionUpdateSchema = z.object({
   description: z.string().min(1).optional(),
   points: z.number().int().min(0).optional(),
   order: z.number().int().optional(),
+  type: z.enum(["TEXT", "SAFE_DIAL", "MULTIPLE_CHOICE"]).optional(),
   validationMode: z.enum(["AUTO", "MANUAL"]).optional(),
+  revealMode: z.enum(["IMMEDIATE", "DEFERRED"]).optional(),
+  successMessage: z.string().optional(),
+  options: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
   allowRetryDefault: z.boolean().optional(),
   acceptedAnswers: z.array(z.string()).optional(),
@@ -414,11 +418,11 @@ const questionUpdateSchema = z.object({
 adminRouter.patch("/questions/:questionId", async (req, res) => {
   const parsed = questionUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dữ liệu không hợp lệ." });
-  const { acceptedAnswers, ...rest } = parsed.data;
+  const { acceptedAnswers, options, ...rest } = parsed.data;
 
   const question = await prisma.question.update({
     where: { id: req.params.questionId },
-    data: rest,
+    data: { ...rest, options: options ? JSON.stringify(options) : undefined },
   });
 
   if (acceptedAnswers) {
