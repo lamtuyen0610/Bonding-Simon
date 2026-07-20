@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
-import { comparePassword, signAdminToken, signTeamToken } from "../utils/auth";
+import { comparePassword, signAdminToken, signTeamToken, generateJoinCode } from "../utils/auth";
+import { getIO, ROOMS, EVENTS } from "../sockets/io";
 
 export const authRouter = Router();
 
@@ -39,22 +40,30 @@ authRouter.post("/team/join", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Dữ liệu không hợp lệ." });
   }
-  const normalizedInputName = parsed.data.teamName.trim().toLowerCase();
+  const trimmedName = parsed.data.teamName.trim();
+  const normalizedInputName = trimmedName.toLowerCase();
+
+  const gameSession = await prisma.gameSession.findFirst({ orderBy: { createdAt: "desc" } });
+  if (gameSession && gameSession.status === "DRAFT") {
+    return res.status(403).json({ error: "Trò chơi chưa bắt đầu. Vui lòng chờ Ban tổ chức khởi động." });
+  }
 
   // Team.name không unique ở tầng DB nên so khớp không phân biệt hoa/thường ở đây.
   const teams = await prisma.team.findMany();
-  const team = teams.find((t) => t.name.trim().toLowerCase() === normalizedInputName);
+  let team = teams.find((t) => t.name.trim().toLowerCase() === normalizedInputName);
 
   if (!team) {
-    return res.status(404).json({ error: "Không tìm thấy đội với tên này. Vui lòng kiểm tra lại với Ban tổ chức." });
-  }
-  if (!team.isActive) {
-    return res.status(403).json({ error: "Đội này hiện đang bị vô hiệu hóa. Vui lòng liên hệ Ban tổ chức." });
+    // Tên đội chưa tồn tại -> tự động tạo đội mới, không cần Admin tạo trước.
+    let joinCode = generateJoinCode();
+    while (await prisma.team.findUnique({ where: { joinCode } })) {
+      joinCode = generateJoinCode();
+    }
+    team = await prisma.team.create({ data: { name: trimmedName, joinCode } });
+    getIO().to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, { teamId: team.id });
   }
 
-  const gameSession = await prisma.gameSession.findFirst({ orderBy: { createdAt: "desc" } });
-  if (gameSession && (gameSession.status === "DRAFT")) {
-    return res.status(403).json({ error: "Trò chơi chưa bắt đầu. Vui lòng chờ Ban tổ chức khởi động." });
+  if (!team.isActive) {
+    return res.status(403).json({ error: "Đội này hiện đang bị vô hiệu hóa. Vui lòng liên hệ Ban tổ chức." });
   }
 
   const token = signTeamToken({ teamId: team.id, teamName: team.name });
