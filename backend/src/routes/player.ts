@@ -181,9 +181,8 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
     },
   });
 
-  let updatedTeam = team;
-  if (status === "CORRECT") {
-    updatedTeam = await onCorrectAnswer(teamId, question.code);
+    if (status === "CORRECT") {
+    await onCorrectAnswer(teamId, question.code);
   }
 
   const io = getIO();
