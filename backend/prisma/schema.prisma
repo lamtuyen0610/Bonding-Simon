@@ -58,6 +58,9 @@ model Team {
   question7UnlockedBy    String?
   sixTasksCompletedAt    DateTime?
   finalQuestionCompletedAt DateTime?
+  lastDecodeAttemptAt    DateTime? // Lần gần nhất đội bấm "Giải mã vụ án" (dùng để mở lại quyền trả lời các câu ẩn đáp án nếu sai)
+  decodeAttempts         Int       @default(0)
+  caseDecodedAt          DateTime? // Thời điểm đội giải mã đúng toàn bộ vụ án -> dùng để xếp hạng 1,2,3...
   startedAt              DateTime  @default(now())
   completedAt            DateTime?
   isActive               Boolean   @default(true)

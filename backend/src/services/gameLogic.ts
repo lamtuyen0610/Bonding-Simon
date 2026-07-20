@@ -47,7 +47,7 @@ export function isQuestionLocked(question: Question, team: Team): boolean {
 /**
  * Một câu hỏi được tính là "đã hoàn thành" (đóng góp vào tiến độ 6/6) khi nào:
  * - Với revealMode = "IMMEDIATE" (báo đúng/sai ngay, ví dụ đồ chơi & két sắt): phải trả lời ĐÚNG.
- * - Với revealMode = "DEFERRED" (ẩn đáp án đến khi kết thúc vụ án): chỉ cần đã GỬI đáp án,
+ * - Với revealMode = "DEFERRED" (ẩn đáp án cho tới khi "Giải mã vụ án"): chỉ cần đã GỬI đáp án,
  *   không quan trọng đúng hay sai — vì người chơi chưa được biết kết quả cho đến cuối.
  */
 export function isQuestionAnsweredForCompletion(
@@ -58,6 +58,17 @@ export function isQuestionAnsweredForCompletion(
   if (!latest) return false;
   if (question.revealMode === "DEFERRED") return true;
   return latest.status === "CORRECT";
+}
+
+/**
+ * Một submission của câu hỏi ẩn đáp án được coi là "cũ" (có thể trả lời lại) nếu đội đã
+ * bấm "Giải mã vụ án" SAU thời điểm gửi đáp án đó mà chưa giải mã thành công — tức là
+ * đáp án này đã được kiểm tra và nằm trong nhóm khiến lần giải mã đó thất bại.
+ */
+export function isStaleDeferredSubmission(submission: Submission, team: Team): boolean {
+  if (!team.lastDecodeAttemptAt) return false;
+  if (team.caseDecodedAt) return false; // đã giải mã xong thì không cần trả lời lại nữa
+  return submission.submittedAt.getTime() < team.lastDecodeAttemptAt.getTime();
 }
 
 /**
@@ -72,7 +83,9 @@ export function computeQuestionStateForTeam(
   const locked = isQuestionLocked(question, team);
   const latest = latestRealSubmission(submissions, question.id);
   const draft = latestDraft(submissions, question.id);
-  const revealed = question.revealMode !== "DEFERRED" || team.question7Unlocked;
+  // Chỉ tiết lộ đúng/sai của câu ẩn đáp án SAU KHI đội giải mã vụ án thành công.
+  const revealed = question.revealMode !== "DEFERRED" || !!team.caseDecodedAt;
+  const stale = question.revealMode === "DEFERRED" && !!latest && isStaleDeferredSubmission(latest, team);
 
   let status:
     | "LOCKED"
@@ -88,8 +101,8 @@ export function computeQuestionStateForTeam(
     status = "LOCKED";
   } else if (latest) {
     if (!revealed) {
-      // Đã gửi đáp án nhưng đang chờ "Kết thúc vụ án" mới được biết đúng/sai.
-      status = "ANSWERED";
+      // Đã gửi đáp án nhưng đang chờ "Giải mã vụ án" mới được biết đúng/sai.
+      status = stale ? "RETRY_ALLOWED" : "ANSWERED";
     } else if (latest.status === "CORRECT") status = "CORRECT";
     else if (latest.status === "PENDING_REVIEW") status = "PENDING_REVIEW";
     else if (latest.status === "RETRY_ALLOWED") status = "RETRY_ALLOWED";
@@ -123,7 +136,7 @@ export function computeQuestionStateForTeam(
     lastAnswer: latest?.answer ?? null,
     awardedPoints: revealed && latest?.status === "CORRECT" ? latest.awardedPoints : 0,
     adminNote: revealed ? latest?.adminNote ?? null : null,
-    allowRetry: revealed && status === "RETRY_ALLOWED",
+    allowRetry: status === "RETRY_ALLOWED",
     submittedAt: latest?.submittedAt ?? null,
   };
 }
@@ -173,7 +186,7 @@ export function computeTotalScore(submissions: Submission[]): number {
 
 /**
  * Điểm hiển thị CHO NGƯỜI CHƠI: giống computeTotalScore nhưng ẩn điểm của các câu
- * revealMode = "DEFERRED" cho tới khi đội đã "Kết thúc vụ án" (question7Unlocked).
+ * revealMode = "DEFERRED" cho tới khi đội "Giải mã vụ án" thành công (caseDecodedAt).
  * Nếu không ẩn, điểm số sẽ vô tình lộ đáp án đúng/sai trước khi được phép biết.
  * Dùng hàm computeTotalScore (không lọc) cho Admin/bảng xếp hạng — nơi cần điểm thật.
  */
@@ -186,7 +199,7 @@ export function computeVisibleTotalScore(
   for (const s of submissions) {
     if (s.isDraft || s.status !== "CORRECT") continue;
     const question = questions.find((q) => q.id === s.questionId);
-    const revealed = !question || question.revealMode !== "DEFERRED" || team.question7Unlocked;
+    const revealed = !question || question.revealMode !== "DEFERRED" || !!team.caseDecodedAt;
     if (!revealed) continue;
     const current = bestByQuestion.get(s.questionId) ?? 0;
     bestByQuestion.set(s.questionId, Math.max(current, s.awardedPoints));

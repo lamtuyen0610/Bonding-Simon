@@ -58,6 +58,7 @@ playerRouter.get("/me", async (req, res) => {
       question7Unlocked: team.question7Unlocked,
       sixTasksCompletedAt: team.sixTasksCompletedAt,
       finalQuestionCompletedAt: team.finalQuestionCompletedAt,
+      caseDecodedAt: team.caseDecodedAt,
     },
     game: {
       status: gameSession?.status ?? "DRAFT",
@@ -144,10 +145,17 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
   const existingReal = team.submissions.filter((s) => s.questionId === questionId && !s.isDraft);
 
   if (question.revealMode === "DEFERRED") {
-    // Câu ẩn đáp án: chỉ được gửi 1 lần duy nhất, không có cơ chế trả lời lại
-    // (vì người chơi không biết đúng/sai để mà sửa).
-    if (existingReal.length > 0) {
-      return res.status(409).json({ error: "Câu hỏi này đã được trả lời và không thể gửi lại." });
+    if (team.caseDecodedAt) {
+      return res.status(409).json({ error: "Vụ án đã được giải mã, không thể sửa đáp án nữa." });
+    }
+    const lastAny = existingReal.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())[0];
+    // Câu ẩn đáp án: chỉ được gửi 1 lần, TRỪ KHI đội đã bấm "Giải mã vụ án" và thất bại
+    // (lúc đó đáp án cũ được coi là "cũ/stale" và cho phép trả lời lại).
+    if (lastAny) {
+      const isStale = team.lastDecodeAttemptAt && lastAny.submittedAt.getTime() < team.lastDecodeAttemptAt.getTime();
+      if (!isStale) {
+        return res.status(409).json({ error: "Câu hỏi này đã được trả lời và không thể gửi lại." });
+      }
     }
   } else {
     const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
@@ -277,14 +285,78 @@ export async function onCorrectAnswer(teamId: string, questionCode: string) {
     getIO().to(ROOMS.team(teamId)).emit(EVENTS.CLUE_DELIVERED, { clue: 2 });
   }
 
-  if (questionCode === "FINAL") {
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { finalQuestionCompletedAt: new Date(), status: "COMPLETED", completedAt: new Date() },
-    });
+  return prisma.team.findUniqueOrThrow({ where: { id: teamId } });
+}
+
+/**
+ * Đội bấm "Giải mã vụ án" sau khi đã trả lời câu hỏi số 7. Kiểm tra TẤT CẢ các câu
+ * revealMode = "DEFERRED" (4 câu trong 6 nhiệm vụ + câu hỏi số 7):
+ * - Nếu tất cả đều ĐÚNG: đội giải mã thành công, chốt mốc thời gian (dùng để xếp hạng
+ *   1, 2, 3... theo thứ tự đội giải mã xong sớm nhất), và tiết lộ toàn bộ đáp án.
+ * - Nếu có ít nhất 1 câu sai: KHÔNG tiết lộ câu nào sai — chỉ báo "chưa đúng hết".
+ *   Đội phải quay lại trả lời lại các câu ẩn đáp án (kể cả câu 7) rồi bấm giải mã lại.
+ */
+playerRouter.post("/decode-case", answerRateLimit, async (req, res) => {
+  const teamId = req.team!.teamId;
+
+  const gameSession = await prisma.gameSession.findFirst({ orderBy: { createdAt: "desc" } });
+  if (!gameSession || ["FINISHED", "LEADERBOARD_PUBLISHED", "STORY_PUBLISHED"].includes(gameSession.status)) {
+    return res.status(403).json({ error: "Trò chơi đã kết thúc." });
+  }
+  if (gameSession.status === "PAUSED") {
+    return res.status(403).json({ error: "Trò chơi đang tạm dừng. Vui lòng chờ Ban tổ chức tiếp tục." });
   }
 
-  return prisma.team.findUniqueOrThrow({ where: { id: teamId } });
+  const team = await prisma.team.findUnique({ where: { id: teamId }, include: { submissions: true } });
+  if (!team) return res.status(404).json({ error: "Không tìm thấy đội." });
+
+  if (team.caseDecodedAt) {
+    return res.json({ ok: true, allCorrect: true, alreadyDecoded: true });
+  }
+  if (!team.question7Unlocked) {
+    return res.status(400).json({ error: "Câu hỏi số 7 chưa được mở khóa." });
+  }
+
+  const finalQuestion = await prisma.question.findFirst({ where: { isFinalQuestion: true, isActive: true } });
+  const finalAnswered = finalQuestion && latestRealAnswerExists(team.submissions, finalQuestion.id);
+  if (!finalAnswered) {
+    return res.status(400).json({ error: "Bạn cần trả lời câu hỏi số 7 trước khi giải mã vụ án." });
+  }
+
+  const deferredQuestions = await prisma.question.findMany({ where: { revealMode: "DEFERRED", isActive: true } });
+  const allCorrect = deferredQuestions.every((q) => {
+    const latest = team.submissions
+      .filter((s) => s.questionId === q.id && !s.isDraft)
+      .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())[0];
+    return latest?.status === "CORRECT";
+  });
+
+  const now = new Date();
+  const updated = await prisma.team.update({
+    where: { id: teamId },
+    data: allCorrect
+      ? {
+          caseDecodedAt: now,
+          finalQuestionCompletedAt: now,
+          status: "COMPLETED",
+          completedAt: now,
+          decodeAttempts: { increment: 1 },
+        }
+      : {
+          lastDecodeAttemptAt: now,
+          decodeAttempts: { increment: 1 },
+        },
+  });
+
+  const io = getIO();
+  io.to(ROOMS.team(teamId)).emit(EVENTS.TEAM_UPDATED, { reason: "decode_case" });
+  io.to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, { teamId });
+
+  res.json({ ok: true, allCorrect, decodeAttempts: updated.decodeAttempts });
+});
+
+function latestRealAnswerExists(submissions: { questionId: string; isDraft: boolean }[], questionId: string) {
+  return submissions.some((s) => s.questionId === questionId && !s.isDraft);
 }
 
 // Trả về bảng xếp hạng (chỉ khi Admin đã công bố)
