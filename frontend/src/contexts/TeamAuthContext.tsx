@@ -11,7 +11,7 @@ interface TeamAuthContextValue {
   team: TeamInfo | null;
   token: string | null;
   loading: boolean;
-  join: (teamName: string, joinCode: string) => Promise<void>;
+  join: (teamName: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -33,10 +33,9 @@ export function TeamAuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const join = useCallback(async (teamName: string, joinCode: string) => {
+  const join = useCallback(async (teamName: string) => {
     const res = await api.post<{ token: string; team: TeamInfo }>("/auth/team/join", {
       teamName,
-      joinCode,
     });
     localStorage.setItem("kn_team_token", res.token);
     localStorage.setItem("kn_team_info", JSON.stringify(res.team));
