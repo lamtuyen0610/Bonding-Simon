@@ -69,7 +69,7 @@ export default function JoinPage() {
         </form>
 
         <p className="text-center text-xs text-white/30 mt-6">
-          Không thấy tên đội của bạn? Vui lòng liên hệ Ban tổ chức.
+          Đặt tên đội tùy thích — đội mới sẽ được tạo tự động khi bạn bắt đầu.
         </p>
       </div>
     </div>
