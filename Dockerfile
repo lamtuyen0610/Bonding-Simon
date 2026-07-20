@@ -3,6 +3,7 @@
 # ---------- Stage 1: build backend ----------
 # Build backend trước để tránh build song song 2 phần cùng lúc (đỡ tốn RAM lúc build).
 FROM node:20-alpine AS backend-build
+RUN apk add --no-cache openssl
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm install
@@ -23,6 +24,7 @@ RUN npm run build
 
 # ---------- Stage 3: production runtime ----------
 FROM node:20-alpine AS runtime
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
