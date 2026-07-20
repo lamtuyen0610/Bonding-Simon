@@ -77,7 +77,7 @@ async function main() {
       validationMode: "AUTO" as const,
       revealMode: "IMMEDIATE" as const,
       allowRetryDefault: true,
-      prerequisiteStage: "CLUE1" as string | null,
+      prerequisiteStage: null as string | null,
       options: null as string[] | null,
       answers: ["462"],
       safeDialConfig: JSON.stringify({ ui: { digits: 3, minDigit: 0, maxDigit: 9 } }),
