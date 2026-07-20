@@ -10,47 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum GameStatus {
-  DRAFT
-  RUNNING
-  PAUSED
-  FINISHED
-  LEADERBOARD_PUBLISHED
-  STORY_PUBLISHED
-}
-
-enum TeamStatus {
-  PLAYING
-  WAITING_FOR_CLUE1
-  WAITING_FOR_CLUE2
-  WAITING_FOR_Q7
-  ANSWERING_Q7
-  COMPLETED
-  DISQUALIFIED
-  ARCHIVED
-}
-
-enum QuestionType {
-  TEXT
-  SAFE_DIAL
-}
-
-enum ValidationMode {
-  AUTO
-  MANUAL
-}
-
-enum SubmissionStatus {
-  PENDING_REVIEW
-  CORRECT
-  INCORRECT
-  RETRY_ALLOWED
-}
+// LƯU Ý: SQLite không hỗ trợ kiểu `enum` trong Prisma, nên các "trạng thái" bên dưới
+// được lưu dưới dạng String với giá trị cố định (kiểm tra hợp lệ ở tầng ứng dụng qua zod).
+// Các giá trị hợp lệ cho từng trường (chỉ mang tính tham khảo, không được DB ép buộc):
+//   GameSession.status   : DRAFT | RUNNING | PAUSED | FINISHED | LEADERBOARD_PUBLISHED | STORY_PUBLISHED
+//   Team.status          : PLAYING | WAITING_FOR_CLUE1 | WAITING_FOR_CLUE2 | WAITING_FOR_Q7 | ANSWERING_Q7 | COMPLETED | DISQUALIFIED | ARCHIVED
+//   Question.type        : TEXT | SAFE_DIAL
+//   Question.validationMode : AUTO | MANUAL
+//   Submission.status    : PENDING_REVIEW | CORRECT | INCORRECT | RETRY_ALLOWED
 
 model GameSession {
   id                     String    @id @default(uuid())
   name                   String    @default("KHỞI NGUỒN")
-  status                 GameStatus @default(DRAFT)
+  status                 String    @default("DRAFT")
   showLiveRanking        Boolean   @default(false)
   startedAt              DateTime?
   pausedAt               DateTime?
@@ -73,7 +45,7 @@ model Team {
   id                     String    @id @default(uuid())
   name                   String
   joinCode               String    @unique
-  status                 TeamStatus @default(PLAYING)
+  status                 String    @default("PLAYING")
   totalScore             Int       @default(0)
   clue1Delivered         Boolean   @default(false)
   clue1DeliveredAt       DateTime?
@@ -104,8 +76,8 @@ model Question {
   description        String
   points             Int
   order              Int
-  type               QuestionType @default(TEXT)
-  validationMode     ValidationMode @default(AUTO)
+  type               String   @default("TEXT")
+  validationMode     String   @default("AUTO")
   isFinalQuestion    Boolean  @default(false)
   isActive           Boolean  @default(true)
   allowRetryDefault  Boolean  @default(true)
@@ -134,7 +106,7 @@ model Submission {
   teamId        String
   questionId    String
   answer        String
-  status        SubmissionStatus @default(PENDING_REVIEW)
+  status        String   @default("PENDING_REVIEW")
   awardedPoints Int      @default(0)
   adminNote     String?
   isDraft       Boolean  @default(false)
