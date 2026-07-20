@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, Sparkles, KeyRound, PartyPopper } from "lucide-react";
+import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, Sparkles, KeyRound, PartyPopper, RotateCcw } from "lucide-react";
 import Logo from "../../components/Logo";
 import StatusBadge from "../../components/StatusBadge";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const toast = useToast();
   const [endingCase, setEndingCase] = useState(false);
   const [decoding, setDecoding] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   if (loading && !data) {
     return (
@@ -85,14 +86,44 @@ export default function DashboardPage() {
     }
   }
 
+  async function resetTeam() {
+    if (
+      !confirm(
+        `Xóa TOÀN BỘ đáp án đã gửi của đội "${team?.name}" và chơi lại từ đầu? Hành động này không thể hoàn tác.`
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    try {
+      await api.post("/player/reset");
+      toast("success", "Đã đặt lại tiến trình. Đội có thể bắt đầu điều tra lại từ đầu.");
+      await refresh();
+    } catch (err) {
+      toast("error", err instanceof ApiError ? err.message : "Không thể đặt lại tiến trình. Vui lòng thử lại.");
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <div className="min-h-screen pb-16">
       <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Logo size="sm" />
-          <button onClick={logout} className="text-white/40 hover:text-white/80 transition" title="Rời khỏi">
-            <LogOut size={18} />
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={resetTeam}
+              disabled={resetting}
+              className="text-white/40 hover:text-purple-soft transition disabled:opacity-40"
+              title="Chơi lại từ đầu"
+            >
+              {resetting ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />}
+            </button>
+            <button onClick={logout} className="text-white/40 hover:text-white/80 transition" title="Rời khỏi">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </header>
 

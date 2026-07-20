@@ -359,6 +359,47 @@ function latestRealAnswerExists(submissions: { questionId: string; isDraft: bool
   return submissions.some((s) => s.questionId === questionId && !s.isDraft);
 }
 
+/**
+ * Đội tự bấm "Chơi lại từ đầu" — xóa toàn bộ đáp án đã gửi của CHÍNH đội mình và đặt lại
+ * mọi mốc tiến trình (hồ sơ, câu 7, giải mã...) về trạng thái ban đầu. Chỉ tác động tới
+ * đội đang đăng nhập (dựa vào teamId trong token), không thể reset đội khác.
+ */
+playerRouter.post("/reset", async (req, res) => {
+  const teamId = req.team!.teamId;
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team) return res.status(404).json({ error: "Không tìm thấy đội." });
+
+  await prisma.submission.deleteMany({ where: { teamId } });
+  const updated = await prisma.team.update({
+    where: { id: teamId },
+    data: {
+      status: "PLAYING",
+      clue1Delivered: false,
+      clue1DeliveredAt: null,
+      clue1DeliveredBy: null,
+      clue2Delivered: false,
+      clue2DeliveredAt: null,
+      clue2DeliveredBy: null,
+      question7Unlocked: false,
+      question7UnlockedAt: null,
+      question7UnlockedBy: null,
+      sixTasksCompletedAt: null,
+      finalQuestionCompletedAt: null,
+      lastDecodeAttemptAt: null,
+      decodeAttempts: 0,
+      caseDecodedAt: null,
+      completedAt: null,
+      manualRankOverride: null,
+    },
+  });
+
+  const io = getIO();
+  io.to(ROOMS.team(teamId)).emit(EVENTS.TEAM_UPDATED, { reason: "self_reset" });
+  io.to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, { teamId });
+
+  res.json({ ok: true, team: { id: updated.id, name: updated.name } });
+});
+
 // Trả về bảng xếp hạng (chỉ khi Admin đã công bố)
 playerRouter.get("/leaderboard", async (_req, res) => {
   const gameSession = await prisma.gameSession.findFirst({ orderBy: { createdAt: "desc" } });
