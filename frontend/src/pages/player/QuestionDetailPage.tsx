@@ -8,6 +8,12 @@ import StatusBadge from "../../components/StatusBadge";
 import SafeDial from "../../components/SafeDial";
 import MultipleChoice from "../../components/MultipleChoice";
 
+// Ảnh hồ sơ/hiện trường gắn theo từng câu hỏi (theo mã code), dùng làm lớp nền mờ phía sau
+// nội dung câu hỏi và hiện trong popup khi trả lời đúng — tạo cảm giác đang lật hồ sơ vật chứng thật.
+const EVIDENCE_IMAGES: Record<string, string> = {
+  SAFE: "/evidence/safe-p2.jpg",
+};
+
 export default function QuestionDetailPage() {
   const { questionId } = useParams();
   const navigate = useNavigate();
@@ -15,6 +21,7 @@ export default function QuestionDetailPage() {
   const toast = useToast();
 
   const question = data?.questions.find((q) => q.id === questionId);
+  const evidenceImage = question ? EVIDENCE_IMAGES[question.code] : undefined;
 
   const [answer, setAnswer] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -117,32 +124,44 @@ export default function QuestionDetailPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
-        <div className="card p-6">
-          <div className="mb-3">
-            <h1 className="text-xl sm:text-2xl font-display font-bold">{question.title}</h1>
+        <div className="card relative overflow-hidden p-6">
+          {evidenceImage && (
+            <>
+              <div
+                className="absolute inset-0 bg-cover bg-center opacity-25 grayscale-[30%]"
+                style={{ backgroundImage: `url(${evidenceImage})` }}
+                aria-hidden="true"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-panel/60 via-panel/85 to-panel" aria-hidden="true" />
+            </>
+          )}
+          <div className="relative">
+            <div className="mb-3">
+              <h1 className="text-xl sm:text-2xl font-display font-bold">{question.title}</h1>
+            </div>
+            <StatusBadge status={question.status} />
+
+            {question.description && (
+              <p className="mt-5 text-white/80 leading-relaxed whitespace-pre-line">{question.description}</p>
+            )}
+
+            {question.status === "ANSWERED" && (
+              <div className="mt-4 border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
+                <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  Đội của bạn đã trả lời: <b>{question.lastAnswer}</b>. Đúng hay sai sẽ được tiết lộ sau khi cả đội
+                  hoàn thành đủ 6 nhiệm vụ và bấm "Kết thúc vụ án".
+                </span>
+              </div>
+            )}
+
+            {question.adminNote && (
+              <div className="mt-4 border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
+                <ShieldAlert size={16} className="shrink-0 mt-0.5" />
+                <span>Ghi chú từ Ban tổ chức: {question.adminNote}</span>
+              </div>
+            )}
           </div>
-          <StatusBadge status={question.status} />
-
-          {question.description && (
-            <p className="mt-5 text-white/80 leading-relaxed whitespace-pre-line">{question.description}</p>
-          )}
-
-          {question.status === "ANSWERED" && (
-            <div className="mt-4 rounded-xl border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
-              <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-              <span>
-                Đội của bạn đã trả lời: <b>{question.lastAnswer}</b>. Đúng hay sai sẽ được tiết lộ sau khi cả đội
-                hoàn thành đủ 6 nhiệm vụ và bấm "Kết thúc vụ án".
-              </span>
-            </div>
-          )}
-
-          {question.adminNote && (
-            <div className="mt-4 rounded-xl border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
-              <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-              <span>Ghi chú từ Ban tổ chức: {question.adminNote}</span>
-            </div>
-          )}
         </div>
 
         {question.type === "SAFE_DIAL" && question.safeDialConfig ? (
@@ -208,6 +227,7 @@ export default function QuestionDetailPage() {
       {successModal && (
         <SuccessModal
           message={successModal}
+          image={evidenceImage}
           onClose={() => {
             setSuccessModal(null);
             navigate("/dashboard");
@@ -250,14 +270,25 @@ function ConfirmDialog({
   );
 }
 
-function SuccessModal({ message, onClose }: { message: string; onClose: () => void }) {
+function SuccessModal({ message, image, onClose }: { message: string; image?: string; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
-      <div className="card p-6 w-full max-w-md border-turquoise/40">
-        <div className="flex items-center gap-2 mb-3 text-turquoise">
+    <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4">
+      <div className="card w-full max-w-md border-turquoise/40 p-6">
+        <div className="flex items-center gap-2 mb-4 text-turquoise">
           <PartyPopper size={20} />
-          <h3 className="font-display font-bold text-lg">Chính xác!</h3>
+          <h3 className="font-display font-bold text-lg font-mono uppercase tracking-widest">Chính xác</h3>
         </div>
+
+        {image && (
+          <div className="mb-5 flex justify-center">
+            {/* Khung "polaroid" mô phỏng tấm ảnh vật chứng vừa được ghim vào bảng hồ sơ */}
+            <div className="relative -rotate-2 bg-[#e9e4d8] p-2 pb-6 shadow-[3px_5px_0_rgba(0,0,0,0.5)]">
+              <div className="absolute left-1/2 -top-2 h-4 w-4 -translate-x-1/2 rounded-full bg-purple shadow-[0_1px_3px_rgba(0,0,0,0.6)]" />
+              <img src={image} alt="Vật chứng" className="h-40 w-52 object-cover grayscale-[15%] sepia-[10%]" />
+            </div>
+          </div>
+        )}
+
         <p className="text-white/85 leading-relaxed mb-6 whitespace-pre-line">{message}</p>
         <button className="btn-primary w-full" onClick={onClose}>
           Tiếp tục điều tra
