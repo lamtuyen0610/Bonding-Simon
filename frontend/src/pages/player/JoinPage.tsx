@@ -84,7 +84,6 @@ export default function JoinPage() {
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 autoComplete="off"
-                autoFocus
               />
             </div>
 
