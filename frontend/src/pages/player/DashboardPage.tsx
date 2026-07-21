@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, Sparkles, KeyRound, PartyPopper, RotateCcw } from "lucide-react";
+import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, KeyRound, PartyPopper, RotateCcw } from "lucide-react";
 import Logo from "../../components/Logo";
 import StatusBadge from "../../components/StatusBadge";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
@@ -78,7 +78,7 @@ export default function DashboardPage() {
   const finalQ = data.questions.find((q) => q.isFinalQuestion);
   const completedCount = nonFinal.filter(countsTowardCompletion).length;
   const progressPct = Math.round((completedCount / 6) * 100);
-  const canEndCase = !!data.team.sixTasksCompletedAt && !data.team.question7Unlocked;
+  const canEndCase = completedCount === 6 && !data.team.question7Unlocked;
   const finalAnswered = !!finalQ && !["LOCKED", "NOT_STARTED"].includes(finalQ.status);
   const canDecode = finalAnswered && !data.team.caseDecodedAt;
   const decoded = !!data.team.caseDecodedAt;
@@ -87,10 +87,15 @@ export default function DashboardPage() {
     setEndingCase(true);
     try {
       await api.post("/player/end-case");
-      toast("success", "Đã mở khóa câu hỏi cuối cùng!");
+      toast("success", "Chính xác toàn bộ 6 câu! Câu hỏi cuối cùng đã mở khóa.");
       await refresh();
     } catch (err) {
-      toast("error", err instanceof ApiError ? err.message : "Không thể kết thúc vụ án. Vui lòng thử lại.");
+      const message = err instanceof ApiError ? err.message : "";
+      if (message.includes("6/6")) {
+        toast("error", "Chưa đúng hết. Hệ thống không nói rõ câu nào sai — hãy xem lại và đổi đáp án bất kỳ câu nào bạn chưa chắc chắn, rồi bấm Giải mã lại.");
+      } else {
+        toast("error", message || "Không thể giải mã. Vui lòng thử lại.");
+      }
     } finally {
       setEndingCase(false);
     }
@@ -105,7 +110,7 @@ export default function DashboardPage() {
       } else {
         toast(
           "error",
-          "Chưa đúng hết. Hãy xem lại các câu ẩn đáp án và Câu hỏi số 7 (giờ có thể sửa lại), rồi thử Giải mã lần nữa."
+          "Chưa đúng hết. Hãy xem lại câu hỏi số 7 (giờ có thể sửa lại), rồi thử \"Khép lại vụ án\" lần nữa."
         );
       }
       await refresh();
@@ -192,12 +197,6 @@ export default function DashboardPage() {
                 style={{ width: `${progressPct}%` }}
               />
             </div>
-            {completedCount === 6 && !canEndCase && !data.team.sixTasksCompletedAt && (
-              <p className="mt-3 text-xs text-white/40">
-                Đội đã thử đủ 6 câu, nhưng có thể còn câu chưa đúng — hệ thống không nói rõ câu nào. Hãy xem lại và
-                gửi lại đáp án cho những câu chưa chắc chắn.
-              </p>
-            )}
           </div>
         )}
 
@@ -208,26 +207,29 @@ export default function DashboardPage() {
 
         {canEndCase && (
           <div className="card p-6 text-center border-purple/40 bg-purple/5">
-            <Sparkles className="mx-auto mb-3 text-purple-soft" size={28} />
-            <p className="font-semibold mb-1">Đội của bạn đã hoàn thành 6 nhiệm vụ điều tra!</p>
-            <p className="text-sm text-white/60 mb-4">Bấm nút bên dưới để mở khóa câu hỏi cuối cùng.</p>
+            <KeyRound className="mx-auto mb-3 text-purple-soft" size={28} />
+            <p className="font-semibold mb-1">Đội đã thử đủ 6 nhiệm vụ điều tra!</p>
+            <p className="text-sm text-white/60 mb-4">
+              Bấm "Giải mã vụ án" để kiểm tra. Nếu đúng hết, câu hỏi cuối cùng sẽ mở khóa. Nếu còn câu sai, đội có
+              thể quay lại đổi đáp án bất kỳ lúc nào rồi thử lại.
+            </p>
             <button className="btn-primary mx-auto" onClick={endCase} disabled={endingCase}>
-              {endingCase ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
-              Kết thúc vụ án
+              {endingCase ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+              Giải mã vụ án
             </button>
           </div>
         )}
 
         {canDecode && (
           <div className="card p-6 text-center border-purple/40 bg-purple/5">
-            <KeyRound className="mx-auto mb-3 text-purple-soft" size={28} />
+            <Flag className="mx-auto mb-3 text-purple-soft" size={28} />
             <p className="font-semibold mb-1">Đội đã trả lời xong câu hỏi cuối cùng!</p>
             <p className="text-sm text-white/60 mb-4">
-              Bấm "Giải mã vụ án" để kiểm tra toàn bộ đáp án. Nếu có câu sai, đội sẽ được quay lại sửa và thử lại.
+              Bấm "Khép lại vụ án" để chốt toàn bộ đáp án. Nếu có câu sai, đội sẽ được quay lại sửa và thử lại.
             </p>
             <button className="btn-primary mx-auto" onClick={decodeCase} disabled={decoding}>
-              {decoding ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
-              Giải mã vụ án
+              {decoding ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
+              Khép lại vụ án
             </button>
           </div>
         )}
