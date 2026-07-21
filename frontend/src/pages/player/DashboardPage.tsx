@@ -250,7 +250,7 @@ export default function DashboardPage() {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-semibold text-white leading-snug">{q.title}</h3>
+                      <h3 className="font-semibold text-white leading-snug">{q.description || q.title}</h3>
                       {q.locked ? (
                         <Lock size={16} className="text-white/30 shrink-0 mt-0.5" />
                       ) : (
@@ -279,7 +279,7 @@ export default function DashboardPage() {
               className="card w-full p-5 text-left border-purple/40 hover:border-purple/70 transition flex items-center justify-between"
             >
               <div>
-                <h3 className="font-semibold text-lg mb-1">{finalQ.title}</h3>
+                <h3 className="font-semibold text-lg mb-1">{finalQ.description || finalQ.title}</h3>
                 <StatusBadge status={finalQ.status} />
               </div>
               <ChevronRight size={20} className="text-purple-soft" />

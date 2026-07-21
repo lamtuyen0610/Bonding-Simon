@@ -61,7 +61,6 @@ export default function QuestionsConfigPage() {
 
 function QuestionEditor({ question, onSaved }: { question: QuestionRow; onSaved: () => void }) {
   const toast = useToast();
-  const [title, setTitle] = useState(question.title);
   const [description, setDescription] = useState(question.description);
   const [points, setPoints] = useState(question.points);
   const [type, setType] = useState(question.type);
@@ -79,7 +78,9 @@ function QuestionEditor({ question, onSaved }: { question: QuestionRow; onSaved:
     setSaving(true);
     try {
       await api.patch(`/admin/questions/${question.id}`, {
-        title,
+        // Không còn tiêu đề riêng — dùng luôn nội dung câu hỏi làm tên hiển thị
+        // (kể cả ở các màn hình nội bộ của Admin như Tiến độ trực tiếp, Hàng đợi chấm...).
+        title: description,
         description,
         points,
         type,
@@ -94,7 +95,7 @@ function QuestionEditor({ question, onSaved }: { question: QuestionRow; onSaved:
             ? answers.split(",").map((a) => a.trim()).filter(Boolean)
             : undefined,
       });
-      toast("success", `Đã lưu câu hỏi "${title}".`);
+      toast("success", "Đã lưu câu hỏi.");
       onSaved();
     } catch (err) {
       toast("error", err instanceof ApiError ? err.message : "Không thể lưu câu hỏi.");
@@ -114,10 +115,6 @@ function QuestionEditor({ question, onSaved }: { question: QuestionRow; onSaved:
       </div>
 
       <div className="space-y-3">
-        <div>
-          <label className="text-xs text-white/50 mb-1 block">Tiêu đề</label>
-          <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
         <div>
           <label className="text-xs text-white/50 mb-1 block">Nội dung câu hỏi</label>
           <textarea className="input-field min-h-[80px] resize-none" value={description} onChange={(e) => setDescription(e.target.value)} />

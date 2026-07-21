@@ -137,13 +137,11 @@ export default function QuestionDetailPage() {
           )}
           <div className="relative">
             <div className="mb-3">
-              <h1 className="text-xl sm:text-2xl font-display font-bold">{question.title}</h1>
+              <h1 className="text-xl sm:text-2xl font-display font-bold leading-snug">
+                {question.description || question.title}
+              </h1>
             </div>
             <StatusBadge status={question.status} />
-
-            {question.description && (
-              <p className="mt-5 text-white/80 leading-relaxed whitespace-pre-line">{question.description}</p>
-            )}
 
             {question.status === "ANSWERED" && (
               <div className="mt-4 border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
