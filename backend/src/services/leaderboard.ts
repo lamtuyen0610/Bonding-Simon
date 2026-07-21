@@ -8,6 +8,7 @@ export interface LeaderboardEntry {
   totalScore: number;
   correctCount: number;
   caseDecodedAt: string | null;
+  durationMs: number | null; // Thời gian hoàn thành = caseDecodedAt - startedAt (đơn vị ms)
   finalQuestionCompletedAt: string | null;
   sixTasksCompletedAt: string | null;
   status: string;
@@ -16,10 +17,12 @@ export interface LeaderboardEntry {
 
 /**
  * Xếp hạng theo quy tắc:
- * 1. Đội đã "Giải mã vụ án" thành công (caseDecodedAt) luôn xếp trên đội chưa giải mã xong,
- *    và giữa các đội đã giải mã, đội nào giải mã SỚM HƠN xếp cao hơn (1, 2, 3...).
+ * 1. Đội đã "Giải mã vụ án" thành công (caseDecodedAt) luôn xếp trên đội chưa giải mã xong.
+ *    Giữa các đội đã giải mã, đội nào có THỜI GIAN HOÀN THÀNH ngắn hơn xếp cao hơn — thời
+ *    gian hoàn thành = lúc giải mã xong TRỪ lúc đội bấm "Bắt đầu điều tra" (team.startedAt),
+ *    KHÔNG so theo mốc giờ tuyệt đối, vì các đội có thể bắt đầu chơi ở thời điểm khác nhau.
  * 2. Với các đội CHƯA giải mã xong vụ án, xếp theo: tổng điểm cao hơn trước, rồi tới thời
- *    gian hoàn thành 6 nhiệm vụ sớm hơn.
+ *    gian hoàn thành 6 nhiệm vụ sớm hơn (theo mốc giờ tuyệt đối, vì đây chỉ là fallback phụ).
  * 3. Nếu vẫn bằng nhau hoàn toàn: đồng hạng, trừ khi Admin đã đặt manualRankOverride.
  */
 export async function computeLeaderboard(): Promise<LeaderboardEntry[]> {
@@ -33,12 +36,14 @@ export async function computeLeaderboard(): Promise<LeaderboardEntry[]> {
     const correctCount = new Set(
       t.submissions.filter((s) => !s.isDraft && s.status === "CORRECT").map((s) => s.questionId)
     ).size;
+    const durationMs = t.caseDecodedAt ? t.caseDecodedAt.getTime() - t.startedAt.getTime() : null;
     return {
       teamId: t.id,
       teamName: t.name,
       totalScore,
       correctCount,
       caseDecodedAt: t.caseDecodedAt,
+      durationMs,
       finalQuestionCompletedAt: t.finalQuestionCompletedAt,
       sixTasksCompletedAt: t.sixTasksCompletedAt,
       status: t.status,
@@ -53,12 +58,11 @@ export async function computeLeaderboard(): Promise<LeaderboardEntry[]> {
       if (ao !== bo) return ao - bo;
     }
 
-    // Ưu tiên 1: đội đã giải mã vụ án xong xếp trên đội chưa xong, sớm hơn xếp cao hơn.
-    const aDecoded = a.caseDecodedAt?.getTime() ?? null;
-    const bDecoded = b.caseDecodedAt?.getTime() ?? null;
-    if (aDecoded !== null && bDecoded !== null) return aDecoded - bDecoded;
-    if (aDecoded !== null) return -1;
-    if (bDecoded !== null) return 1;
+    // Ưu tiên 1: đội đã giải mã xong xếp trên đội chưa xong; giữa các đội đã giải mã,
+    // thời gian hoàn thành (durationMs) ngắn hơn xếp cao hơn.
+    if (a.durationMs !== null && b.durationMs !== null) return a.durationMs - b.durationMs;
+    if (a.durationMs !== null) return -1;
+    if (b.durationMs !== null) return 1;
 
     // Cả 2 đều chưa giải mã xong -> xếp theo điểm, rồi tới thời gian hoàn thành 6 nhiệm vụ.
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
@@ -80,6 +84,7 @@ export async function computeLeaderboard(): Promise<LeaderboardEntry[]> {
       totalScore: s.totalScore,
       correctCount: s.correctCount,
       caseDecodedAt: s.caseDecodedAt?.toISOString() ?? null,
+      durationMs: s.durationMs,
       finalQuestionCompletedAt: s.finalQuestionCompletedAt?.toISOString() ?? null,
       sixTasksCompletedAt: s.sixTasksCompletedAt?.toISOString() ?? null,
       status: s.status,
@@ -91,9 +96,9 @@ export async function computeLeaderboard(): Promise<LeaderboardEntry[]> {
   for (let i = 1; i < entries.length; i++) {
     const a = entries[i - 1];
     const b = entries[i];
-    const sameDecodeState = a.caseDecodedAt === b.caseDecodedAt;
+    const sameDuration = a.durationMs === b.durationMs;
     if (
-      sameDecodeState &&
+      sameDuration &&
       a.totalScore === b.totalScore &&
       a.sixTasksCompletedAt === b.sixTasksCompletedAt
     ) {

@@ -60,6 +60,7 @@ export interface LeaderboardEntry {
   totalScore: number;
   correctCount: number;
   caseDecodedAt: string | null;
+  durationMs: number | null;
   finalQuestionCompletedAt: string | null;
   sixTasksCompletedAt: string | null;
   status: string;

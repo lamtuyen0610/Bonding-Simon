@@ -5,6 +5,16 @@ import { api, ApiError } from "../../api/client";
 import { LeaderboardEntry } from "../../types";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
 
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours} giờ ${minutes} phút ${seconds} giây`;
+  if (minutes > 0) return `${minutes} phút ${seconds} giây`;
+  return `${seconds} giây`;
+}
+
 export default function LeaderboardPage() {
   const navigate = useNavigate();
   const { team } = useTeamAuth();
@@ -67,7 +77,10 @@ export default function LeaderboardPage() {
                     {e.teamName} {e.teamId === team?.id && <span className="text-turquoise text-xs">(đội bạn)</span>}
                   </p>
                   <p className="text-xs text-white/40">
-                    {e.caseDecodedAt ? "Đã giải mã vụ án" : "Chưa giải mã xong"} {e.isTie && "· Đồng hạng"}
+                    {e.durationMs !== null
+                      ? `Hoàn thành trong ${formatDuration(e.durationMs)}`
+                      : "Chưa giải mã xong"}{" "}
+                    {e.isTie && "· Đồng hạng"}
                   </p>
                 </div>
               </div>

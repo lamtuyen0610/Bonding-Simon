@@ -18,6 +18,16 @@ import { useToast } from "../../contexts/ToastContext";
 import { useAdminSocket } from "../../hooks/useAdminSocket";
 import { LeaderboardEntry } from "../../types";
 
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
 interface GameSession {
   id: string;
   status: string;
@@ -141,6 +151,9 @@ export default function GameControlsPage() {
                   {e.rank === 1 ? <Crown size={16} className="text-yellow-400" /> : e.rank === 2 ? <Medal size={15} className="text-slate-300" /> : e.rank === 3 ? <Award size={15} className="text-amber-600" /> : <span className="font-mono text-xs text-white/40">{e.rank}</span>}
                 </div>
                 <span className="flex-1 text-sm font-medium">{e.teamName}</span>
+                <span className="text-xs text-white/40">
+                  {e.durationMs !== null ? formatDuration(e.durationMs) : "Chưa giải mã"}
+                </span>
                 <span className="text-sm font-display font-bold text-turquoise">{e.totalScore}đ</span>
               </div>
             ))}

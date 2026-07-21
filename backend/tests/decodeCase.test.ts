@@ -201,4 +201,41 @@ describe("Giải mã vụ án (Câu hỏi số 7 dạng trắc nghiệm + xếp 
     expect(rankB).toBe(1);
     expect(rankA).toBe(2);
   });
+
+  it("Xếp hạng theo THỜI GIAN HOÀN THÀNH (không phải mốc giờ tuyệt đối) — đội vào sau nhưng làm nhanh hơn vẫn xếp trên", async () => {
+    const { team: teamX } = await seedGame();
+    const teamY = await prisma.team.create({ data: { name: "Đội Y", joinCode: generateJoinCode() } });
+
+    const t0 = new Date("2026-01-01T00:00:00Z").getTime();
+
+    // Đội X: bắt đầu lúc T0, giải mã xong lúc T0+5 phút -> thời gian hoàn thành = 5 phút.
+    // Nhưng hoàn thành ở mốc giờ tuyệt đối SỚM hơn đội Y.
+    await prisma.team.update({
+      where: { id: teamX.id },
+      data: {
+        startedAt: new Date(t0),
+        caseDecodedAt: new Date(t0 + 5 * 60 * 1000),
+      },
+    });
+
+    // Đội Y: bắt đầu MUỘN hơn (T0 + 10 phút), giải mã xong lúc T0+12 phút
+    // -> thời gian hoàn thành chỉ 2 phút (nhanh hơn X), dù mốc giờ tuyệt đối TRỄ hơn X.
+    await prisma.team.update({
+      where: { id: teamY.id },
+      data: {
+        startedAt: new Date(t0 + 10 * 60 * 1000),
+        caseDecodedAt: new Date(t0 + 12 * 60 * 1000),
+      },
+    });
+
+    const entries = await computeLeaderboard();
+    const entryX = entries.find((e) => e.teamId === teamX.id)!;
+    const entryY = entries.find((e) => e.teamId === teamY.id)!;
+
+    expect(entryY.durationMs).toBe(2 * 60 * 1000);
+    expect(entryX.durationMs).toBe(5 * 60 * 1000);
+    // Đội Y xếp trên đội X vì THỜI GIAN HOÀN THÀNH ngắn hơn, dù giải mã xong trễ hơn về mốc giờ tuyệt đối.
+    expect(entryY.rank).toBe(1);
+    expect(entryX.rank).toBe(2);
+  });
 });
