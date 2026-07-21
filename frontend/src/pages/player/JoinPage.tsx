@@ -80,7 +80,7 @@ export default function JoinPage() {
               </label>
               <input
                 className="input-field"
-                placeholder="Ví dụ: Đội Thám Tử 01"
+                placeholder="Ví dụ: Đội Điều Tra 01"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 autoComplete="off"
