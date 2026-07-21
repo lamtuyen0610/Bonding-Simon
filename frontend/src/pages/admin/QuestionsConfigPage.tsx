@@ -92,7 +92,11 @@ function QuestionEditor({ question, onSaved }: { question: QuestionRow; onSaved:
             : undefined,
         acceptedAnswers:
           question.validationMode === "AUTO"
-            ? answers.split(",").map((a) => a.trim()).filter(Boolean)
+            ? type === "MULTIPLE_CHOICE"
+              ? [answers.trim()].filter(Boolean) // câu trắc nghiệm: đáp án là NGUYÊN VĂN 1 lựa chọn,
+                // không được tách theo dấu phẩy vì bản thân lựa chọn có thể chứa dấu phẩy.
+              : answers.split(",").map((a) => a.trim()).filter(Boolean) // câu nhập chữ tự do: cho phép
+                // nhiều biến thể đáp án chấp nhận được, cách nhau bằng dấu phẩy.
             : undefined,
       });
       toast("success", "Đã lưu câu hỏi.");

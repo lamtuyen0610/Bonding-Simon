@@ -37,6 +37,14 @@ function StickyNote({ text, rotate = 0 }: { text: string; rotate?: number }) {
   );
 }
 
+function DocumentSheet({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="mx-auto max-w-sm bg-[#f4f1e8] p-2 shadow-[3px_5px_0_rgba(0,0,0,0.5)]">
+      <img src={src} alt={alt} className="w-full h-auto" />
+    </div>
+  );
+}
+
 const CONTENT: Record<
   string,
   {
@@ -57,6 +65,14 @@ const CONTENT: Record<
             <Polaroid src="/evidence/clue1-corridor.jpg" alt="Hành lang hiện trường" rotate={-3} caption="TRACE-KN-181002" />
             <Polaroid src="/evidence/clue1-flashlight.jpg" alt="Ánh đèn pin hiện trường" rotate={2} />
             <StickyNote text="1 chú gấu bông được tìm thấy tại P5" rotate={-2} />
+          </div>
+        ),
+      },
+      {
+        title: "Bản trích xuất lời khai (ghi âm)",
+        body: (
+          <div className="py-4">
+            <DocumentSheet src="/evidence/clue1-transcript.jpg" alt="Bản trích xuất lời khai của Nhi" />
           </div>
         ),
       },
