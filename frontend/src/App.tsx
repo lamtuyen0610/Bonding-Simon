@@ -4,9 +4,11 @@ import { AdminAuthProvider, useAdminAuth } from "./contexts/AdminAuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 
 import JoinPage from "./pages/player/JoinPage";
+import IntroPage from "./pages/player/IntroPage";
 import InstructionsPage from "./pages/player/InstructionsPage";
 import DashboardPage from "./pages/player/DashboardPage";
 import QuestionDetailPage from "./pages/player/QuestionDetailPage";
+import EvidencePage from "./pages/player/EvidencePage";
 import LeaderboardPage from "./pages/player/LeaderboardPage";
 import StoryPage from "./pages/player/StoryPage";
 
@@ -57,7 +59,7 @@ export default function App() {
           ACCESS: RESTRICTED
         </span>
         <Routes>
-          <Route path="/" element={<Navigate to="/join" replace />} />
+          <Route path="/" element={<IntroPage />} />
           <Route path="/join" element={<JoinPage />} />
           <Route
             path="/instructions"
@@ -80,6 +82,14 @@ export default function App() {
             element={
               <RequireTeam>
                 <QuestionDetailPage />
+              </RequireTeam>
+            }
+          />
+          <Route
+            path="/evidence/:code"
+            element={
+              <RequireTeam>
+                <EvidencePage />
               </RequireTeam>
             }
           />
@@ -119,7 +129,7 @@ export default function App() {
             <Route path="controls" element={<GameControlsPage />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/join" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AdminAuthProvider>
     </TeamAuthProvider>

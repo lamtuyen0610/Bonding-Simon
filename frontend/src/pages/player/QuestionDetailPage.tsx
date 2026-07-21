@@ -14,6 +14,12 @@ const EVIDENCE_IMAGES: Record<string, string> = {
   SAFE: "/evidence/safe-p2.jpg",
 };
 
+// Câu hỏi nào tương ứng dẫn tới trang hồ sơ vật chứng đầy đủ nào sau khi trả lời đúng.
+const EVIDENCE_PAGE_BY_CODE: Record<string, string> = {
+  TOY: "clue1",
+  SAFE: "clue2",
+};
+
 export default function QuestionDetailPage() {
   const { questionId } = useParams();
   const navigate = useNavigate();
@@ -87,6 +93,12 @@ export default function QuestionDetailPage() {
         answer: finalAnswer,
       });
       if (res.submission.status === "CORRECT") {
+        const evidenceCode = EVIDENCE_PAGE_BY_CODE[question.code];
+        if (evidenceCode) {
+          await refresh();
+          navigate(`/evidence/${evidenceCode}`);
+          return;
+        }
         if (res.submission.successMessage) {
           setSuccessModal(res.submission.successMessage);
         } else {

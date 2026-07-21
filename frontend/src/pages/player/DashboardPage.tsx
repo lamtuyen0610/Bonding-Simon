@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, KeyRound, PartyPopper, RotateCcw } from "lucide-react";
+import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, KeyRound, PartyPopper, RotateCcw, FolderOpen } from "lucide-react";
 import Logo from "../../components/Logo";
 import StatusBadge from "../../components/StatusBadge";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
@@ -142,7 +142,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="relative min-h-screen pb-16">
+      <div
+        className="fixed inset-0 bg-cover bg-center opacity-25"
+        style={{ backgroundImage: "url(/story/dashboard-bg.jpg)" }}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 bg-gradient-to-b from-ink/80 via-ink/90 to-ink" aria-hidden="true" />
+      <div className="relative">
       <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Logo size="sm" />
@@ -196,6 +203,34 @@ export default function DashboardPage() {
                 className="h-full rounded-full bg-gradient-to-r from-purple to-turquoise transition-all duration-500"
                 style={{ width: `${progressPct}%` }}
               />
+            </div>
+          </div>
+        )}
+
+        {(data.team.clue1Delivered || data.team.clue2Delivered) && (
+          <div>
+            <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-3">Hồ sơ đã nhận</h2>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {data.team.clue1Delivered && (
+                <button
+                  onClick={() => navigate("/evidence/clue1")}
+                  className="card p-4 text-left transition hover:border-turquoise/40 hover:-translate-y-0.5 flex items-center gap-3"
+                >
+                  <FolderOpen size={20} className="text-purple-soft shrink-0" />
+                  <span className="font-semibold text-sm">Tập hồ sơ số 1</span>
+                  <ChevronRight size={16} className="text-white/30 ml-auto shrink-0" />
+                </button>
+              )}
+              {data.team.clue2Delivered && (
+                <button
+                  onClick={() => navigate("/evidence/clue2")}
+                  className="card p-4 text-left transition hover:border-turquoise/40 hover:-translate-y-0.5 flex items-center gap-3"
+                >
+                  <FolderOpen size={20} className="text-purple-soft shrink-0" />
+                  <span className="font-semibold text-sm">Tập hồ sơ số 2</span>
+                  <ChevronRight size={16} className="text-white/30 ml-auto shrink-0" />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -295,6 +330,7 @@ export default function DashboardPage() {
           </button>
         )}
       </main>
+      </div>
     </div>
   );
 }
