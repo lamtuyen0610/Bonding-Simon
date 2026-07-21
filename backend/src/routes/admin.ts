@@ -200,6 +200,29 @@ adminRouter.post("/teams/:teamId/reset", async (req, res) => {
   res.json({ team });
 });
 
+/**
+ * Xóa HẲN 1 đội, kèm toàn bộ lịch sử trả lời (Submission được xóa theo nhờ cascade
+ * delete đã khai báo trong schema). Đây là thao tác không thể hoàn tác — dùng khi cần
+ * dọn dữ liệu đội test/rác, khác với "Vô hiệu hóa" (chỉ ẩn, vẫn giữ dữ liệu).
+ */
+adminRouter.delete("/teams/:teamId", async (req, res) => {
+  const team = await prisma.team.findUnique({ where: { id: req.params.teamId } });
+  if (!team) return res.status(404).json({ error: "Không tìm thấy đội." });
+
+  await prisma.team.delete({ where: { id: team.id } });
+
+  await logAdminAction({
+    adminId: req.admin!.adminId,
+    adminName: req.admin!.username,
+    action: "DELETE_TEAM",
+    entityType: "Team",
+    entityId: team.id,
+    metadata: { name: team.name },
+  });
+  getIO().to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, {});
+  res.json({ ok: true });
+});
+
 // ---------- BẢNG TIẾN ĐỘ TRỰC TIẾP ----------
 adminRouter.get("/progress", async (_req, res) => {
   const teams = await prisma.team.findMany({

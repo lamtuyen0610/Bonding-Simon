@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Ban,
   RefreshCw,
+  Trash2,
   Loader2,
 } from "lucide-react";
 import { api, ApiError } from "../../api/client";
@@ -220,6 +221,29 @@ export default function TeamDetailPage() {
             }
           >
             <Ban size={15} /> {team.isDisqualified ? "Bỏ đánh dấu bỏ cuộc" : "Đánh dấu bỏ cuộc"}
+          </button>
+          <button
+            className="btn-danger"
+            disabled={busy === "delete"}
+            onClick={async () => {
+              if (
+                confirm(
+                  `Xóa HẲN đội "${team.name}" khỏi hệ thống, kèm toàn bộ lịch sử trả lời? Hành động này không thể hoàn tác.`
+                )
+              ) {
+                setBusy("delete");
+                try {
+                  await api.delete(`/admin/teams/${team.id}`);
+                  toast("success", `Đã xóa đội "${team.name}".`);
+                  navigate("/admin/teams");
+                } catch (err) {
+                  toast("error", err instanceof ApiError ? err.message : "Không thể xóa đội.");
+                  setBusy(null);
+                }
+              }
+            }}
+          >
+            <Trash2 size={15} /> Xóa đội (kèm lịch sử)
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
+import type { MouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, ChevronRight, Trash2, Loader2 } from "lucide-react";
 import { api, ApiError } from "../../api/client";
 import { useAdminSocket } from "../../hooks/useAdminSocket";
 import { useToast } from "../../contexts/ToastContext";
@@ -33,6 +34,7 @@ export default function TeamsPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api.get<{ teams: TeamRow[] }>("/admin/teams").then((r) => setTeams(r.teams)).catch(() => {});
@@ -54,6 +56,23 @@ export default function TeamsPage() {
       toast("error", err instanceof ApiError ? err.message : "Không thể tạo đội.");
     } finally {
       setLoadingCreate(false);
+    }
+  }
+
+  async function deleteTeam(team: TeamRow, e: MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Xóa HẲN đội "${team.name}" khỏi hệ thống, kèm toàn bộ lịch sử trả lời? Không thể hoàn tác.`)) {
+      return;
+    }
+    setDeletingId(team.id);
+    try {
+      await api.delete(`/admin/teams/${team.id}`);
+      toast("success", `Đã xóa đội "${team.name}".`);
+      load();
+    } catch (err) {
+      toast("error", err instanceof ApiError ? err.message : "Không thể xóa đội.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -88,10 +107,10 @@ export default function TeamsPage() {
 
       <div className="space-y-2.5">
         {teams?.map((t) => (
-          <button
+          <div
             key={t.id}
             onClick={() => navigate(`/admin/teams/${t.id}`)}
-            className="card w-full p-4 flex items-center justify-between text-left hover:border-turquoise/40 transition"
+            className="card w-full p-4 flex items-center justify-between text-left hover:border-turquoise/40 transition cursor-pointer"
           >
             <div className="flex items-center gap-4">
               <div>
@@ -104,9 +123,17 @@ export default function TeamsPage() {
             <div className="flex items-center gap-5">
               <span className="text-xs text-white/50">{STATUS_LABEL[t.status] ?? t.status}</span>
               <span className="font-display font-bold text-turquoise">{t.totalScore}đ</span>
+              <button
+                onClick={(e) => deleteTeam(t, e)}
+                disabled={deletingId === t.id}
+                className="text-white/30 hover:text-red-400 transition disabled:opacity-40"
+                title="Xóa đội"
+              >
+                {deletingId === t.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              </button>
               <ChevronRight size={18} className="text-white/30" />
             </div>
-          </button>
+          </div>
         ))}
         {teams && teams.length === 0 && (
           <div className="card p-8 text-center text-white/50">Chưa có đội nào. Hãy tạo đội đầu tiên.</div>
