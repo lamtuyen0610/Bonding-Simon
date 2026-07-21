@@ -24,7 +24,6 @@ export default function QuestionDetailPage() {
   const evidenceImage = question ? EVIDENCE_IMAGES[question.code] : undefined;
 
   const [answer, setAnswer] = useState("");
-  const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const [successModal, setSuccessModal] = useState<string | null>(null);
@@ -101,7 +100,6 @@ export default function QuestionDetailPage() {
         toast("info", "Đã gửi đáp án. Đang chờ Ban tổ chức kiểm tra.");
       }
       await refresh();
-      setConfirming(false);
       if (question.type !== "SAFE_DIAL" && !res.submission.successMessage) {
         navigate("/dashboard");
       }
@@ -173,9 +171,9 @@ export default function QuestionDetailPage() {
               <button
                 className="btn-primary w-full"
                 disabled={!answer || submitting}
-                onClick={() => setConfirming(true)}
+                onClick={() => doSubmit(answer)}
               >
-                <Send size={16} /> Gửi đáp án
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Gửi đáp án
               </button>
             )}
           </div>
@@ -194,23 +192,14 @@ export default function QuestionDetailPage() {
               <button
                 className="btn-primary"
                 disabled={!canSubmit || !answer.trim() || submitting}
-                onClick={() => setConfirming(true)}
+                onClick={() => doSubmit(answer)}
               >
-                <Send size={16} /> Gửi đáp án
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Gửi đáp án
               </button>
             </div>
           </div>
         )}
       </main>
-
-      {confirming && (
-        <ConfirmDialog
-          answer={answer}
-          submitting={submitting}
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => doSubmit(answer)}
-        />
-      )}
 
       {successModal && (
         <SuccessModal
@@ -222,38 +211,6 @@ export default function QuestionDetailPage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function ConfirmDialog({
-  answer,
-  submitting,
-  onCancel,
-  onConfirm,
-}: {
-  answer: string;
-  submitting: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
-      <div className="card p-6 w-full max-w-sm">
-        <h3 className="font-display font-bold text-lg mb-2">Xác nhận gửi đáp án</h3>
-        <p className="text-sm text-white/60 mb-4">Đội của bạn sẽ gửi đáp án sau. Bạn có chắc chắn không?</p>
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm mb-5 break-words">
-          {answer}
-        </div>
-        <div className="flex gap-3">
-          <button className="btn-secondary flex-1" onClick={onCancel} disabled={submitting}>
-            Hủy
-          </button>
-          <button className="btn-primary flex-1" onClick={onConfirm} disabled={submitting}>
-            {submitting ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

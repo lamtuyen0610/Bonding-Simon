@@ -148,14 +148,8 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
     if (team.caseDecodedAt) {
       return res.status(409).json({ error: "Vụ án đã được giải mã, không thể sửa đáp án nữa." });
     }
-    const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
-    if (lastCorrect) {
-      // Đã đúng rồi thì khóa lại — không cần (và không nên) cho sửa nữa để không vô tình
-      // biến 1 câu đã đúng thành sai và làm mất tiến độ 6/6 đã đạt được.
-      return res.status(409).json({ error: "Câu hỏi này đã được trả lời và không thể gửi lại." });
-    }
-    // Chưa đúng (hoặc chưa từng gửi): luôn cho phép thử lại — đội không được biết đúng/sai
-    // ở từng lần thử, nhưng có thể dò tiếp tới khi nào đúng thật thì thôi.
+    // Luôn cho phép gửi lại đáp án (kể cả khi đã từng đúng) — đội không được biết đúng/sai
+    // ở từng lần thử, nên cần được tự do đổi ý bất cứ lúc nào cho tới khi giải mã xong.
   } else {
     const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
     if (lastCorrect) {
