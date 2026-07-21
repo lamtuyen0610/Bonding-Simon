@@ -75,7 +75,7 @@ export default function QuestionDetailPage() {
     );
   }
 
-  const canSubmit = !["CORRECT", "PENDING_REVIEW", "ANSWERED"].includes(question.status);
+  const canSubmit = !["CORRECT", "PENDING_REVIEW"].includes(question.status);
 
   async function doSubmit(finalAnswer: string) {
     if (!question) return;
@@ -149,8 +149,9 @@ export default function QuestionDetailPage() {
               <div className="mt-4 border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
                 <ShieldAlert size={16} className="shrink-0 mt-0.5" />
                 <span>
-                  Đội của bạn đã trả lời: <b>{question.lastAnswer}</b>. Đúng hay sai sẽ được tiết lộ sau khi cả đội
-                  hoàn thành đủ 6 nhiệm vụ và bấm "Kết thúc vụ án".
+                  Đội của bạn đã trả lời: <b>{question.lastAnswer}</b>. Đúng hay sai không được tiết lộ ngay — chỉ
+                  hiện ra khi cả đội hoàn thành đủ 6 nhiệm vụ (đúng thật) và giải mã vụ án. Bạn vẫn có thể chọn đáp
+                  án khác và gửi lại bất cứ lúc nào nếu chưa chắc chắn.
                 </span>
               </div>
             )}

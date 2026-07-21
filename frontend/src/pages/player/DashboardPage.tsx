@@ -10,11 +10,38 @@ import { api, ApiError } from "../../api/client";
 import { useToast } from "../../contexts/ToastContext";
 import { PlayerQuestion } from "../../types";
 
+// Đếm để hiển thị thanh tiến độ (mang tính động viên, KHÔNG dùng để mở khóa gì):
+// - Câu IMMEDIATE: chỉ tính khi đã trả lời ĐÚNG.
+// - Câu DEFERRED (ẩn đáp án): tính khi đã "thử" (gửi ít nhất 1 lần), vì đội không được biết
+//   đúng/sai để mà tự đối chiếu. Việc mở khóa Câu hỏi số 7 do SERVER quyết định (chỉ khi
+//   toàn bộ 6 câu thực sự đúng), không dựa vào con số hiển thị ở đây.
 function countsTowardCompletion(q: PlayerQuestion): boolean {
   if (q.revealMode === "DEFERRED") {
     return !["LOCKED", "NOT_STARTED", "DRAFT_SAVED"].includes(q.status);
   }
   return q.status === "CORRECT";
+}
+
+/**
+ * Xáo trộn thứ tự hiển thị 6 nhiệm vụ theo mã đội — mỗi đội thấy 1 thứ tự "ngẫu nhiên"
+ * khác nhau, nhưng thứ tự đó ỔN ĐỊNH qua các lần tải lại trang (không nhảy lung tung mỗi
+ * lần refresh) vì được tạo từ chính teamId làm hạt giống (seed).
+ */
+function seededShuffle<T>(items: T[], seed: string): T[] {
+  let state = 0;
+  for (let i = 0; i < seed.length; i++) {
+    state = (state * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const next = () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
 export default function DashboardPage() {
@@ -44,11 +71,14 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
-  const nonFinal = data.questions.filter((q) => !q.isFinalQuestion);
+  const nonFinal = seededShuffle(
+    data.questions.filter((q) => !q.isFinalQuestion),
+    data.team.id
+  );
   const finalQ = data.questions.find((q) => q.isFinalQuestion);
   const completedCount = nonFinal.filter(countsTowardCompletion).length;
   const progressPct = Math.round((completedCount / 6) * 100);
-  const canEndCase = completedCount === 6 && !!data.team.sixTasksCompletedAt && !data.team.question7Unlocked;
+  const canEndCase = !!data.team.sixTasksCompletedAt && !data.team.question7Unlocked;
   const finalAnswered = !!finalQ && !["LOCKED", "NOT_STARTED"].includes(finalQ.status);
   const canDecode = finalAnswered && !data.team.caseDecodedAt;
   const decoded = !!data.team.caseDecodedAt;
@@ -153,7 +183,7 @@ export default function DashboardPage() {
         {!decoded && (
           <div className="card p-5">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-white/60">Tiến độ 6 nhiệm vụ đầu tiên</span>
+              <span className="text-white/60">Tiến độ 6 nhiệm vụ đầu tiên (đã thử)</span>
               <span className="font-semibold text-turquoise">{completedCount}/6</span>
             </div>
             <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
@@ -162,6 +192,12 @@ export default function DashboardPage() {
                 style={{ width: `${progressPct}%` }}
               />
             </div>
+            {completedCount === 6 && !canEndCase && !data.team.sixTasksCompletedAt && (
+              <p className="mt-3 text-xs text-white/40">
+                Đội đã thử đủ 6 câu, nhưng có thể còn câu chưa đúng — hệ thống không nói rõ câu nào. Hãy xem lại và
+                gửi lại đáp án cho những câu chưa chắc chắn.
+              </p>
+            )}
           </div>
         )}
 
@@ -204,7 +240,6 @@ export default function DashboardPage() {
             </h2>
             <div className="grid sm:grid-cols-2 gap-3">
               {nonFinal
-                .sort((a, b) => a.order - b.order)
                 .map((q) => (
                   <button
                     key={q.id}

@@ -148,15 +148,14 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
     if (team.caseDecodedAt) {
       return res.status(409).json({ error: "Vụ án đã được giải mã, không thể sửa đáp án nữa." });
     }
-    const lastAny = existingReal.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())[0];
-    // Câu ẩn đáp án: chỉ được gửi 1 lần, TRỪ KHI đội đã bấm "Giải mã vụ án" và thất bại
-    // (lúc đó đáp án cũ được coi là "cũ/stale" và cho phép trả lời lại).
-    if (lastAny) {
-      const isStale = team.lastDecodeAttemptAt && lastAny.submittedAt.getTime() < team.lastDecodeAttemptAt.getTime();
-      if (!isStale) {
-        return res.status(409).json({ error: "Câu hỏi này đã được trả lời và không thể gửi lại." });
-      }
+    const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
+    if (lastCorrect) {
+      // Đã đúng rồi thì khóa lại — không cần (và không nên) cho sửa nữa để không vô tình
+      // biến 1 câu đã đúng thành sai và làm mất tiến độ 6/6 đã đạt được.
+      return res.status(409).json({ error: "Câu hỏi này đã được trả lời và không thể gửi lại." });
     }
+    // Chưa đúng (hoặc chưa từng gửi): luôn cho phép thử lại — đội không được biết đúng/sai
+    // ở từng lần thử, nhưng có thể dò tiếp tới khi nào đúng thật thì thôi.
   } else {
     const lastCorrect = existingReal.find((s) => s.status === "CORRECT");
     if (lastCorrect) {
@@ -200,11 +199,6 @@ playerRouter.post("/answers/submit", answerRateLimit, async (req, res) => {
 
   if (status === "CORRECT") {
     await onCorrectAnswer(teamId, question.code);
-  }
-  if (question.revealMode === "DEFERRED") {
-    // Câu ẩn đáp án tính là "đã hoàn thành" ngay khi gửi (đúng hay sai chưa biết),
-    // nên vẫn cần kiểm tra tiến độ 6/6 dù không phải CORRECT.
-    await maybeAdvanceToWaitingForFinal(teamId);
   }
 
   const io = getIO();

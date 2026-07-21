@@ -45,10 +45,11 @@ export function isQuestionLocked(question: Question, team: Team): boolean {
 }
 
 /**
- * Một câu hỏi được tính là "đã hoàn thành" (đóng góp vào tiến độ 6/6) khi nào:
- * - Với revealMode = "IMMEDIATE" (báo đúng/sai ngay, ví dụ đồ chơi & két sắt): phải trả lời ĐÚNG.
- * - Với revealMode = "DEFERRED" (ẩn đáp án cho tới khi "Giải mã vụ án"): chỉ cần đã GỬI đáp án,
- *   không quan trọng đúng hay sai — vì người chơi chưa được biết kết quả cho đến cuối.
+ * Một câu hỏi được tính là "đã hoàn thành" (đóng góp vào tiến độ 6/6) khi và chỉ khi
+ * đội đã trả lời ĐÚNG — kể cả với các câu revealMode = "DEFERRED" (ẩn đáp án): đội
+ * không được cho biết đúng/sai, nhưng hệ thống vẫn chỉ tính là xong khi thực sự đúng.
+ * Vì vậy các câu ẩn đáp án luôn cho phép gửi lại (xem player.ts) để đội có thể dò tiếp
+ * cho tới khi đúng, dù không được thông báo trực tiếp đúng hay sai ở từng lần thử.
  */
 export function isQuestionAnsweredForCompletion(
   question: Question,
@@ -56,19 +57,7 @@ export function isQuestionAnsweredForCompletion(
 ): boolean {
   const latest = latestRealSubmission(submissions, question.id);
   if (!latest) return false;
-  if (question.revealMode === "DEFERRED") return true;
   return latest.status === "CORRECT";
-}
-
-/**
- * Một submission của câu hỏi ẩn đáp án được coi là "cũ" (có thể trả lời lại) nếu đội đã
- * bấm "Giải mã vụ án" SAU thời điểm gửi đáp án đó mà chưa giải mã thành công — tức là
- * đáp án này đã được kiểm tra và nằm trong nhóm khiến lần giải mã đó thất bại.
- */
-export function isStaleDeferredSubmission(submission: Submission, team: Team): boolean {
-  if (!team.lastDecodeAttemptAt) return false;
-  if (team.caseDecodedAt) return false; // đã giải mã xong thì không cần trả lời lại nữa
-  return submission.submittedAt.getTime() < team.lastDecodeAttemptAt.getTime();
 }
 
 /**
@@ -85,7 +74,6 @@ export function computeQuestionStateForTeam(
   const draft = latestDraft(submissions, question.id);
   // Chỉ tiết lộ đúng/sai của câu ẩn đáp án SAU KHI đội giải mã vụ án thành công.
   const revealed = question.revealMode !== "DEFERRED" || !!team.caseDecodedAt;
-  const stale = question.revealMode === "DEFERRED" && !!latest && isStaleDeferredSubmission(latest, team);
 
   let status:
     | "LOCKED"
@@ -101,8 +89,8 @@ export function computeQuestionStateForTeam(
     status = "LOCKED";
   } else if (latest) {
     if (!revealed) {
-      // Đã gửi đáp án nhưng đang chờ "Giải mã vụ án" mới được biết đúng/sai.
-      status = stale ? "RETRY_ALLOWED" : "ANSWERED";
+      // Đã gửi đáp án nhưng chưa biết đúng/sai — vẫn có thể gửi lại đáp án khác bất cứ lúc nào.
+      status = "ANSWERED";
     } else if (latest.status === "CORRECT") status = "CORRECT";
     else if (latest.status === "PENDING_REVIEW") status = "PENDING_REVIEW";
     else if (latest.status === "RETRY_ALLOWED") status = "RETRY_ALLOWED";

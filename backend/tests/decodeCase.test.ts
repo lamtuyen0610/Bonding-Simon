@@ -109,37 +109,71 @@ describe("Giải mã vụ án (Câu hỏi số 7 dạng trắc nghiệm + xếp 
     expect(fireState.status).toBe("CORRECT"); // đã được tiết lộ
   });
 
-  it("Giải mã sai (1 câu sai) -> không lộ đáp án, cho phép trả lời lại rồi giải mã lại thành công", async () => {
+  it("Giải mã sai (câu hỏi số 7 sai) -> không lộ đáp án, cho phép trả lời lại câu 7 rồi giải mã lại thành công", async () => {
     const { team, deferredTask, finalQ } = await seedGame();
     const token = signTeamToken({ teamId: team.id, teamName: team.name });
 
-    await completeSixTasks(token, deferredTask, "Tai nạn"); // SAI
+    // 6 nhiệm vụ đều phải đúng thật thì mới qua được bước "Kết thúc vụ án"
+    await completeSixTasks(token, deferredTask, "Cố ý");
+    const teamAfterSix = await prisma.team.findUniqueOrThrow({ where: { id: team.id } });
+    expect(teamAfterSix.sixTasksCompletedAt).not.toBeNull();
+
     await request(app)
       .post("/api/player/answers/submit")
       .set("Authorization", `Bearer ${token}`)
-      .send({ questionId: finalQ.id, answer: "Toàn" }); // đúng
+      .send({ questionId: finalQ.id, answer: "Hùng" }); // câu 7 SAI
 
     const firstDecode = await request(app).post("/api/player/decode-case").set("Authorization", `Bearer ${token}`);
     expect(firstDecode.body.allCorrect).toBe(false);
 
     const teamAfterFail = await prisma.team.findUniqueOrThrow({ where: { id: team.id } });
     expect(teamAfterFail.caseDecodedAt).toBeNull();
-    expect(teamAfterFail.lastDecodeAttemptAt).not.toBeNull();
 
-    // Chưa được biết câu nào sai
+    // Chưa được biết là sai, chỉ thấy "đã trả lời"
     const me = await request(app).get("/api/player/me").set("Authorization", `Bearer ${token}`);
-    const fireState = me.body.questions.find((q: any) => q.code === "FIRE");
-    expect(fireState.status).toBe("RETRY_ALLOWED"); // được phép sửa lại vì lần giải mã đã thất bại
+    const finalState = me.body.questions.find((q: any) => q.isFinalQuestion);
+    expect(finalState.status).toBe("ANSWERED");
 
-    // Sửa lại câu sai
+    // Sửa lại câu 7 (được phép gửi lại vì chưa đúng)
     const retrySubmit = await request(app)
       .post("/api/player/answers/submit")
       .set("Authorization", `Bearer ${token}`)
-      .send({ questionId: deferredTask.id, answer: "Cố ý" });
+      .send({ questionId: finalQ.id, answer: "Toàn" });
     expect(retrySubmit.status).toBe(200);
 
     const secondDecode = await request(app).post("/api/player/decode-case").set("Authorization", `Bearer ${token}`);
     expect(secondDecode.body.allCorrect).toBe(true);
+  });
+
+  it("6 nhiệm vụ chưa đúng hết thì không thể Kết thúc vụ án, dù đã 'thử' đủ 6 câu", async () => {
+    const { team, deferredTask } = await seedGame();
+    const token = signTeamToken({ teamId: team.id, teamName: team.name });
+
+    // Cố tình để câu ẩn đáp án sai
+    await request(app)
+      .post("/api/player/answers/submit")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ questionId: deferredTask.id, answer: "Tai nạn" }); // SAI
+    for (let i = 0; i < 5; i++) {
+      const q = await prisma.question.findUniqueOrThrow({ where: { code: `TASK${i}` } });
+      await request(app)
+        .post("/api/player/answers/submit")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ questionId: q.id, answer: "dap-an" });
+    }
+
+    const endCase = await request(app).post("/api/player/end-case").set("Authorization", `Bearer ${token}`);
+    expect(endCase.status).toBe(400); // vì 1 câu (FIRE) vẫn chưa đúng thật
+
+    // Vẫn có thể sửa lại và thử tiếp
+    const retry = await request(app)
+      .post("/api/player/answers/submit")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ questionId: deferredTask.id, answer: "Cố ý" }); // đúng
+    expect(retry.status).toBe(200);
+
+    const endCase2 = await request(app).post("/api/player/end-case").set("Authorization", `Bearer ${token}`);
+    expect(endCase2.status).toBe(200);
   });
 
   it("Xếp hạng theo thứ tự đội giải mã xong sớm nhất (1, 2, 3...)", async () => {
