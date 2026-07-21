@@ -92,7 +92,7 @@ export default function DashboardPage() {
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "";
       if (message.includes("6/6")) {
-        toast("error", "Chưa đúng hết. Hệ thống không nói rõ câu nào sai — hãy xem lại và đổi đáp án bất kỳ câu nào bạn chưa chắc chắn, rồi bấm Giải mã lại.");
+        toast("error", "Chưa đúng hết, hãy kiểm tra và xâu chuỗi lại các đáp án thêm lần nữa.");
       } else {
         toast("error", message || "Không thể giải mã. Vui lòng thử lại.");
       }

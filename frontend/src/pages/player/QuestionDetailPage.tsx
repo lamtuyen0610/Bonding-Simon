@@ -143,17 +143,6 @@ export default function QuestionDetailPage() {
             </div>
             <StatusBadge status={question.status} />
 
-            {question.status === "ANSWERED" && (
-              <div className="mt-4 border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
-                <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-                <span>
-                  Đội của bạn đã trả lời: <b>{question.lastAnswer}</b>. Đúng hay sai không được tiết lộ ngay — chỉ
-                  hiện ra khi cả đội hoàn thành đủ 6 nhiệm vụ (đúng thật) và giải mã vụ án. Bạn vẫn có thể chọn đáp
-                  án khác và gửi lại bất cứ lúc nào nếu chưa chắc chắn.
-                </span>
-              </div>
-            )}
-
             {question.adminNote && (
               <div className="mt-4 border border-purple/30 bg-purple/10 px-4 py-3 text-sm text-purple-soft flex gap-2">
                 <ShieldAlert size={16} className="shrink-0 mt-0.5" />
