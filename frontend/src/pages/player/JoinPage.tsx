@@ -98,7 +98,7 @@ export default function JoinPage() {
           </form>
 
           <p className="text-center text-xs text-white/30 mt-6">
-            Đặt tên đội tùy thích — đội mới sẽ được tạo tự động khi bạn bắt đầu.
+            
           </p>
         </div>
       </div>
