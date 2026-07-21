@@ -9,7 +9,6 @@ import InstructionsPage from "./pages/player/InstructionsPage";
 import DashboardPage from "./pages/player/DashboardPage";
 import QuestionDetailPage from "./pages/player/QuestionDetailPage";
 import EvidencePage from "./pages/player/EvidencePage";
-import LeaderboardPage from "./pages/player/LeaderboardPage";
 import StoryPage from "./pages/player/StoryPage";
 
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -90,14 +89,6 @@ export default function App() {
             element={
               <RequireTeam>
                 <EvidencePage />
-              </RequireTeam>
-            }
-          />
-          <Route
-            path="/leaderboard"
-            element={
-              <RequireTeam>
-                <LeaderboardPage />
               </RequireTeam>
             }
           />

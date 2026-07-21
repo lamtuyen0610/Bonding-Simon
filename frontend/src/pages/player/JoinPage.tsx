@@ -67,8 +67,8 @@ export default function JoinPage() {
               />
               <Rule
                 icon={<Trophy size={18} className="text-turquoise" />}
-                title="Tính điểm & xếp hạng"
-                desc="Khi trò chơi kết thúc, Ban tổ chức sẽ công bố bảng xếp hạng (theo thứ tự đội giải mã vụ án thành công) và toàn bộ diễn biến vụ án."
+                title="Xếp hạng theo thời gian phá án"
+                desc="Đội nào giải mã được toàn bộ vụ án trong thời gian NGẮN NHẤT (tính từ lúc bấm 'Bắt đầu điều tra' đến lúc giải mã thành công) sẽ xếp hạng cao nhất. Ban tổ chức sẽ công bố bảng xếp hạng và toàn bộ diễn biến vụ án khi trò chơi kết thúc."
               />
             </div>
           </div>

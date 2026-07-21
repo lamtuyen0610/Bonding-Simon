@@ -10,7 +10,6 @@ import {
   maybeAdvanceToWaitingForFinal,
 } from "../services/gameLogic";
 import { getIO, ROOMS, EVENTS } from "../sockets/io";
-import { computeLeaderboard } from "../services/leaderboard";
 
 export const playerRouter = Router();
 playerRouter.use(requireTeam);
@@ -59,6 +58,7 @@ playerRouter.get("/me", async (req, res) => {
       sixTasksCompletedAt: team.sixTasksCompletedAt,
       finalQuestionCompletedAt: team.finalQuestionCompletedAt,
       caseDecodedAt: team.caseDecodedAt,
+      durationMs: team.caseDecodedAt ? team.caseDecodedAt.getTime() - team.startedAt.getTime() : null,
     },
     game: {
       status: gameSession?.status ?? "DRAFT",
@@ -340,7 +340,8 @@ playerRouter.post("/decode-case", answerRateLimit, async (req, res) => {
   io.to(ROOMS.team(teamId)).emit(EVENTS.TEAM_UPDATED, { reason: "decode_case" });
   io.to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, { teamId });
 
-  res.json({ ok: true, allCorrect, decodeAttempts: updated.decodeAttempts });
+  const durationMs = allCorrect ? updated.caseDecodedAt!.getTime() - updated.startedAt.getTime() : null;
+  res.json({ ok: true, allCorrect, decodeAttempts: updated.decodeAttempts, durationMs });
 });
 
 function latestRealAnswerExists(submissions: { questionId: string; isDraft: boolean }[], questionId: string) {
@@ -386,16 +387,6 @@ playerRouter.post("/reset", async (req, res) => {
   io.to(ROOMS.admin).emit(EVENTS.ADMIN_PROGRESS_UPDATED, { teamId });
 
   res.json({ ok: true, team: { id: updated.id, name: updated.name } });
-});
-
-// Trả về bảng xếp hạng (chỉ khi Admin đã công bố)
-playerRouter.get("/leaderboard", async (_req, res) => {
-  const gameSession = await prisma.gameSession.findFirst({ orderBy: { createdAt: "desc" } });
-  if (!gameSession?.leaderboardPublishedAt) {
-    return res.status(403).json({ error: "Bảng xếp hạng chưa được công bố." });
-  }
-  const entries = await computeLeaderboard();
-  res.json({ entries });
 });
 
 // Trả về diễn biến vụ án (chỉ khi Admin đã công bố)

@@ -43,6 +43,7 @@ export interface PlayerMeResponse {
     sixTasksCompletedAt: string | null;
     finalQuestionCompletedAt: string | null;
     caseDecodedAt: string | null;
+    durationMs: number | null;
   };
   game: {
     status: string;

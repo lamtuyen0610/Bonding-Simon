@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Trophy, Flag, Loader2, ChevronRight, Lock, KeyRound, PartyPopper, RotateCcw, FolderOpen } from "lucide-react";
+import { LogOut, Flag, Loader2, ChevronRight, Lock, KeyRound, PartyPopper, RotateCcw, FolderOpen } from "lucide-react";
 import Logo from "../../components/Logo";
 import StatusBadge from "../../components/StatusBadge";
 import { useTeamAuth } from "../../contexts/TeamAuthContext";
@@ -15,6 +15,16 @@ import { PlayerQuestion } from "../../types";
 // - Câu DEFERRED (ẩn đáp án): tính khi đã "thử" (gửi ít nhất 1 lần), vì đội không được biết
 //   đúng/sai để mà tự đối chiếu. Việc mở khóa Câu hỏi số 7 do SERVER quyết định (chỉ khi
 //   toàn bộ 6 câu thực sự đúng), không dựa vào con số hiển thị ở đây.
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours} giờ ${minutes} phút ${seconds} giây`;
+  if (minutes > 0) return `${minutes} phút ${seconds} giây`;
+  return `${seconds} giây`;
+}
+
 function countsTowardCompletion(q: PlayerQuestion): boolean {
   if (q.revealMode === "DEFERRED") {
     return !["LOCKED", "NOT_STARTED", "DRAFT_SAVED"].includes(q.status);
@@ -104,9 +114,15 @@ export default function DashboardPage() {
   async function decodeCase() {
     setDecoding(true);
     try {
-      const res = await api.post<{ allCorrect: boolean }>("/player/decode-case");
+      const res = await api.post<{ allCorrect: boolean; durationMs: number | null }>("/player/decode-case");
       if (res.allCorrect) {
-        toast("success", "Chính xác toàn bộ! Chúc mừng đội đã giải mã được vụ án 🎉");
+        const timeText = res.durationMs !== null ? formatDuration(res.durationMs) : null;
+        toast(
+          "success",
+          `Chính xác toàn bộ! Chúc mừng đội đã giải mã được vụ án 🎉${
+            timeText ? ` Thời gian hoàn thành: ${timeText}.` : ""
+          }`
+        );
       } else {
         toast(
           "error",
@@ -176,18 +192,20 @@ export default function DashboardPage() {
             <p className="eyebrow mb-1">Đội điều tra</p>
             <h1 className="text-xl sm:text-2xl font-display font-bold">{team?.name}</h1>
           </div>
-          {data.game.leaderboardPublished && (
-            <button className="btn-secondary" onClick={() => navigate("/leaderboard")}>
-              <Trophy size={16} /> Xếp hạng
-            </button>
-          )}
         </div>
 
         {decoded && (
           <div className="card p-6 text-center border-turquoise/40 bg-turquoise/5">
             <PartyPopper className="mx-auto mb-3 text-turquoise" size={28} />
             <p className="font-semibold mb-1 text-turquoise">Đội của bạn đã giải mã thành công vụ án!</p>
-            <p className="text-sm text-white/60">Chờ Ban tổ chức công bố bảng xếp hạng và diễn biến đầy đủ.</p>
+            {data.team.durationMs !== null && (
+              <p className="text-lg font-display font-bold text-turquoise mb-1">
+                Thời gian hoàn thành: {formatDuration(data.team.durationMs)}
+              </p>
+            )}
+            <p className="text-xs text-white/40 mt-2">
+              Ban tổ chức sẽ công bố bảng xếp hạng và diễn biến đầy đủ của vụ án khi trò chơi kết thúc.
+            </p>
           </div>
         )}
 
