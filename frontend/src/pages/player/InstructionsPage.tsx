@@ -21,8 +21,8 @@ export default function InstructionsPage() {
           <div className="space-y-5">
             <Rule
               icon={<Puzzle size={20} className="text-purple-soft" />}
-              title="6 nhiệm vụ điều tra"
-              desc="Sắp xếp thứ tự các manh mối để tìm ra sự thật."
+              title="6 nhiệm vụ điều tra, tự do lựa chọn"
+              desc="Đội có thể chọn giải bất kỳ nhiệm vụ nào, không cần theo đúng thứ tự."
             />
             <Rule
               icon={<FileLock2 size={20} className="text-turquoise" />}

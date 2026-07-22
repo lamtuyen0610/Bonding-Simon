@@ -55,7 +55,8 @@ const CONTENT: Record<
 > = {
   clue1: {
     label: "Tập hồ sơ số 1",
-intro: "Cập nhật tình hình: Đã thu thập được bản trích xuất lời khai của cháu Nhi.\nMọi thứ vẫn còn rối ren nhưng chúng ta đã tiến 1 bước gần hơn với sự thật.",
+    intro:
+      "Cập nhật tình hình: Đã thu thập được bản trích xuất lời khai của cháu Nhi. Mọi thứ vẫn còn rối ren nhưng chúng ta đã tiến 1 bước gần hơn với sự thật.",
     sections: [
       {
         title: "Nhận tập hồ sơ số 1",
@@ -78,7 +79,7 @@ intro: "Cập nhật tình hình: Đã thu thập được bản trích xuất l
   clue2: {
     label: "Tập hồ sơ số 2",
     intro:
-      "Két sắt đã được mở!\nCùng lúc đó, đội khám nghiệm pháp y đã gửi lại kết quả về 2 thi thể tìm thấy trong căn trọ.\nĐây là bước đột phá lớn trong quá trình điều tra.",
+      "Két sắt đã được mở! Cùng lúc đó, đội khám nghiệm pháp y đã gửi lại kết quả về 2 thi thể tìm thấy trong căn trọ. Đây là bước đột phá lớn trong quá trình điều tra.",
     sections: [
       {
         title: "Tang chứng trong két sắt",
@@ -137,7 +138,7 @@ export default function EvidencePage() {
 
   return (
     <div className="min-h-screen bg-black">
-      <header className="sticky top-0 z-10 pt-6 sm:pt-0 backdrop-blur-md bg-ink/80 border-b border-white/10">
+      <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button onClick={() => navigate("/dashboard")} className="text-white/60 hover:text-white transition">
             <ArrowLeft size={20} />

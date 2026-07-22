@@ -42,7 +42,7 @@ export default function QuestionDetailPage() {
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
-  const [successModal, setSuccessModal] = useState<string | null>(null);
+  const [successModal, setSuccessModal] = useState<{ message: string; isFinal: boolean } | null>(null);
 
   useEffect(() => {
     if (question) {
@@ -112,9 +112,10 @@ export default function QuestionDetailPage() {
           );
           if (decodeRes.allCorrect) {
             const timeText = decodeRes.durationMs !== null ? formatDuration(decodeRes.durationMs) : null;
-            setSuccessModal(
-              `Đội của bạn đã giải mã thành công vụ án!${timeText ? ` Thời gian hoàn thành: ${timeText}.` : ""}`
-            );
+            setSuccessModal({
+              message: `Đội của bạn đã giải mã thành công vụ án!${timeText ? ` Thời gian hoàn thành: ${timeText}.` : ""}`,
+              isFinal: true,
+            });
           } else {
             toast(
               "error",
@@ -140,7 +141,7 @@ export default function QuestionDetailPage() {
           return;
         }
         if (res.submission.successMessage) {
-          setSuccessModal(res.submission.successMessage);
+          setSuccessModal({ message: res.submission.successMessage, isFinal: false });
         } else {
           toast("success", "Chính xác! Điểm đã được cộng.");
         }
@@ -164,7 +165,7 @@ export default function QuestionDetailPage() {
 
   return (
     <div className="min-h-screen pb-16">
-      <header className="sticky top-0 z-10 pt-6 sm:pt-0 backdrop-blur-md bg-ink/80 border-b border-white/10">
+      <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button onClick={() => navigate("/dashboard")} className="text-white/60 hover:text-white transition">
             <ArrowLeft size={20} />
@@ -255,7 +256,8 @@ export default function QuestionDetailPage() {
 
       {successModal && (
         <SuccessModal
-          message={successModal}
+          message={successModal.message}
+          isFinal={successModal.isFinal}
           image={evidenceImage}
           onClose={() => {
             setSuccessModal(null);
@@ -267,7 +269,17 @@ export default function QuestionDetailPage() {
   );
 }
 
-function SuccessModal({ message, image, onClose }: { message: string; image?: string; onClose: () => void }) {
+function SuccessModal({
+  message,
+  image,
+  isFinal,
+  onClose,
+}: {
+  message: string;
+  image?: string;
+  isFinal?: boolean;
+  onClose: () => void;
+}) {
   return (
     <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4">
       <div className="card w-full max-w-md border-turquoise/40 p-6">
@@ -288,7 +300,7 @@ function SuccessModal({ message, image, onClose }: { message: string; image?: st
 
         <p className="text-white/85 leading-relaxed mb-6 whitespace-pre-line">{message}</p>
         <button className="btn-primary w-full" onClick={onClose}>
-          Đóng vụ án
+          {isFinal ? "Đóng vụ án" : "Tiếp tục điều tra"}
         </button>
       </div>
     </div>

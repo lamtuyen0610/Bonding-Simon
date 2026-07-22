@@ -166,43 +166,24 @@ export default function DashboardPage() {
       />
       <div className="fixed inset-0 bg-gradient-to-b from-ink/80 via-ink/90 to-ink" aria-hidden="true" />
       <div className="relative">
-<header className="sticky top-0 z-10 border-b border-white/10 bg-ink/80 backdrop-blur-md">
-  <div className="mx-auto max-w-4xl px-4 pt-3">
-    <span
-      className="block font-mono text-[10px] uppercase tracking-widest text-white/20"
-      aria-hidden="true"
-    >
-      SYS.KHỞI_NGUỒN
-    </span>
-  </div>
-
-  <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 pb-4 pt-2">
-    <Logo size="sm" />
-
-    <div className="flex shrink-0 items-center gap-4">
-      <button
-        onClick={resetTeam}
-        disabled={resetting}
-        className="text-white/40 transition hover:text-purple-soft disabled:opacity-40"
-        title="Chơi lại từ đầu"
-      >
-        {resetting ? (
-          <Loader2 size={18} className="animate-spin" />
-        ) : (
-          <RotateCcw size={18} />
-        )}
-      </button>
-
-      <button
-        onClick={logout}
-        className="text-white/40 transition hover:text-white/80"
-        title="Rời khỏi"
-      >
-        <LogOut size={18} />
-      </button>
-    </div>
-  </div>
-</header>
+      <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Logo size="sm" />
+          <div className="flex items-center gap-4">
+            <button
+              onClick={resetTeam}
+              disabled={resetting}
+              className="text-white/40 hover:text-purple-soft transition disabled:opacity-40"
+              title="Chơi lại từ đầu"
+            >
+              {resetting ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />}
+            </button>
+            <button onClick={logout} className="text-white/40 hover:text-white/80 transition" title="Rời khỏi">
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
+      </header>
 
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
         {/* Team summary */}
