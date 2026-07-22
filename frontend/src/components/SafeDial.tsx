@@ -129,7 +129,6 @@ function RingLayer({
   }
 
   const marks = Array.from({ length: range }, (_, i) => min + i);
-  const selectedValue = currentValue(rotation);
 
   return (
     <g
@@ -148,10 +147,9 @@ function RingLayer({
         {marks.map((m) => {
           const angle = (m - min) * anglePerStep;
           const pos = polar(style.textR, angle);
-          // Số đang ở đỉnh 12 giờ (đã chọn) được xoay ngược lại để hiển thị THẲNG ĐỨNG dễ đọc;
-          // các số còn lại giữ nguyên độ nghiêng tự nhiên theo vị trí trên vòng tròn.
-          const isSelected = m === selectedValue;
-          const textRotation = isSelected ? -rotation : 0;
+          // LUÔN giữ chữ số thẳng đứng, không nghiêng theo vị trí trên vòng tròn — chỉ vị trí
+          // (đi theo vòng khi xoay) thay đổi, còn hướng chữ luôn cố định dễ đọc.
+          const textRotation = -rotation;
           return (
             <text
               key={m}
@@ -174,12 +172,54 @@ function RingLayer({
   );
 }
 
+function SafeHandle({ opened }: { opened?: boolean }) {
+  return (
+    <svg viewBox="0 0 140 220" className="h-40 sm:h-48 w-auto shrink-0" aria-hidden="true">
+      <defs>
+        <linearGradient id="chromeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f4f4f2" />
+          <stop offset="45%" stopColor="#9a9a97" />
+          <stop offset="55%" stopColor="#c7c7c4" />
+          <stop offset="100%" stopColor="#5c5c59" />
+        </linearGradient>
+      </defs>
+      {/* Tấm ốp gắn tay cầm */}
+      <rect x="30" y="20" width="80" height="180" rx="6" fill="#1c1b19" stroke="rgba(255,255,255,0.08)" />
+      <text
+        x="70"
+        y="34"
+        textAnchor="middle"
+        fill="#8a8a86"
+        fontSize="8"
+        fontFamily="'JetBrains Mono', monospace"
+        letterSpacing="1"
+      >
+        SAFE LOCK
+      </text>
+      {/* Tay cầm xoay quanh trục ở giữa, kéo xuống khi đã mở */}
+      <g
+        style={{
+          transform: `rotate(${opened ? 78 : 0}deg)`,
+          transformOrigin: "70px 110px",
+          transition: "transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}
+      >
+        <rect x="66" y="50" width="8" height="120" rx="4" fill="url(#chromeGradient)" stroke="#0a0a09" strokeWidth="1" />
+        <rect x="40" y="150" width="60" height="20" rx="10" fill="url(#chromeGradient)" stroke="#0a0a09" strokeWidth="1" />
+        <circle cx="70" cy="110" r="10" fill="url(#chromeGradient)" stroke="#0a0a09" strokeWidth="1.5" />
+      </g>
+    </svg>
+  );
+}
+
 export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disabled, opened }: Props) {
   const [values, setValues] = useState<number[]>(Array(digits).fill(minDigit));
 
   return (
     <div className="card p-6 sm:p-8 flex flex-col items-center gap-6">
-      <div className="relative" style={{ width: "min(100%, 360px)", aspectRatio: "1 / 1" }}>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6">
+        <SafeHandle opened={opened} />
+        <div className="relative" style={{ width: "min(280px, 78vw)", aspectRatio: "1 / 1" }}>
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full h-full select-none">
           {Array.from({ length: Math.min(digits, RING_STYLE.length) }, (_, i) => (
             <RingLayer
@@ -219,6 +259,7 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
           {/* Mũi tên đỏ CỐ ĐỊNH ở đỉnh 12 giờ, chỉ rõ vị trí số đang được chọn trên mỗi vòng */}
           <polygon points={`${CENTER - 10},4 ${CENTER + 10},4 ${CENTER},26`} fill="#e0402a" stroke="#0a0a09" strokeWidth={1} />
         </svg>
+        </div>
       </div>
 
       <div className="flex gap-4 sm:gap-6">
