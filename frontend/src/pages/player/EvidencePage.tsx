@@ -78,9 +78,7 @@ intro: "Cập nhật tình hình: Đã thu thập được bản trích xuất l
   clue2: {
     label: "Tập hồ sơ số 2",
     intro:
-      "Két sắt đã được mở! 
-      Cùng lúc đó, đội khám nghiệm pháp y đã gửi lại kết quả về 2 thi thể tìm thấy trong căn trọ. 
-        Đây là bước đột phá lớn trong quá trình điều tra.",
+      "Két sắt đã được mở!\nCùng lúc đó, đội khám nghiệm pháp y đã gửi lại kết quả về 2 thi thể tìm thấy trong căn trọ.\nĐây là bước đột phá lớn trong quá trình điều tra.",
     sections: [
       {
         title: "Tang chứng trong két sắt",
