@@ -55,9 +55,8 @@ const CONTENT: Record<
 > = {
   clue1: {
     label: "Tập hồ sơ số 1",
-    intro:
-      "Cập nhật tình hình: Đã thu thập được bản trích xuất lời khai của cháu Nhi. 
-      Mọi thứ vẫn còn rối ren nhưng chúng ta đã tiến 1 bước gần hơn với sự thật.",
+intro: `Cập nhật tình hình: Đã thu thập được bản trích xuất lời khai của cháu Nhi.
+Mọi thứ vẫn còn rối ren nhưng chúng ta đã tiến 1 bước gần hơn với sự thật.`,
     sections: [
       {
         title: "Nhận tập hồ sơ số 1",
