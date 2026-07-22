@@ -51,9 +51,12 @@ export default function App() {
       <AdminAuthProvider>
         {/* Lớp phủ khí quyển: vệt quét CRT + nhãn tọa độ góc màn hình, không cản thao tác. */}
         <div className="scanlines" aria-hidden="true" />
-        <span className="corner-label top-3 left-3" aria-hidden="true">
-          SYS.KHỞI_NGUỒN
-        </span>
+<span
+  className="corner-label top-2 left-4 sm:top-3 sm:left-3"
+  aria-hidden="true"
+>
+  SYS.KHỞI_NGUỒN
+</span>
         <span className="corner-label bottom-3 right-3" aria-hidden="true">
           ACCESS: RESTRICTED
         </span>
