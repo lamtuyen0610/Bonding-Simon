@@ -288,7 +288,7 @@ function SuccessModal({ message, image, onClose }: { message: string; image?: st
 
         <p className="text-white/85 leading-relaxed mb-6 whitespace-pre-line">{message}</p>
         <button className="btn-primary w-full" onClick={onClose}>
-          Tiếp tục điều tra
+          Đóng vụ án
         </button>
       </div>
     </div>
