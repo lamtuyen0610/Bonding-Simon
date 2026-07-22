@@ -56,7 +56,9 @@ const CONTENT: Record<
   clue1: {
     label: "Tập hồ sơ số 1",
     intro:
-      "Cập nhật tình hình: Đã thu thập được bản trích xuất lời khai của cháu Nhi. Mọi thứ vẫn còn rối ren nhưng chúng ta đã tiến 1 bước gần hơn với sự thật.",
+      "
+      Cập nhật tình hình: Đã thu thập được bản trích xuất lời khai của cháu Nhi. 
+      Mọi thứ vẫn còn rối ren nhưng chúng ta đã tiến 1 bước gần hơn với sự thật.",
     sections: [
       {
         title: "Nhận tập hồ sơ số 1",
@@ -79,7 +81,9 @@ const CONTENT: Record<
   clue2: {
     label: "Tập hồ sơ số 2",
     intro:
-      "Két sắt đã được mở! Cùng lúc đó, đội khám nghiệm pháp y đã gửi lại kết quả về 2 thi thể tìm thấy trong căn trọ. Đây là bước đột phá lớn trong quá trình điều tra.",
+      "Két sắt đã được mở! 
+      Cùng lúc đó, đội khám nghiệm pháp y đã gửi lại kết quả về 2 thi thể tìm thấy trong căn trọ. 
+        Đây là bước đột phá lớn trong quá trình điều tra.",
     sections: [
       {
         title: "Tang chứng trong két sắt",
