@@ -1,5 +1,5 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
 import { useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check } from "lucide-react";
 
 interface Props {
@@ -28,7 +28,6 @@ function polar(radius: number, angleDeg: number) {
 }
 
 function ringPath(outerR: number, innerR: number) {
-  // Vòng khuyên đầy đủ 360 độ, vẽ bằng 2 nửa cung để tránh lỗi path khi góc = 360.
   const o1 = polar(outerR, 0);
   const o2 = polar(outerR, 180);
   const o3 = polar(outerR, 360);
@@ -46,16 +45,18 @@ function ringPath(outerR: number, innerR: number) {
   ].join(" ");
 }
 
+function normalizeAngle(a: number) {
+  return ((a % 360) + 360) % 360;
+}
+
 function RingLayer({
   ringIndex,
-  value,
   min,
   max,
   disabled,
   onChange,
 }: {
   ringIndex: number;
-  value: number;
   min: number;
   max: number;
   disabled?: boolean;
@@ -64,11 +65,15 @@ function RingLayer({
   const style = RING_STYLE[ringIndex] ?? RING_STYLE[RING_STYLE.length - 1];
   const range = max - min + 1;
   const anglePerStep = 360 / range;
-  const rotation = -(value - min) * anglePerStep;
+
+  // rotation: góc xoay LIÊN TỤC (không làm tròn) để khi kéo cảm giác mượt như xoay khóa thật.
+  // Số đang được chọn = số có vị trí gần đỉnh 12h nhất tại thời điểm hiện tại.
+  const [rotation, setRotation] = useState(0);
   const [dragging, setDragging] = useState(false);
   const groupRef = useRef<SVGGElement>(null);
+  const lastAngleRef = useRef<number | null>(null);
 
-  function svgPointFromEvent(clientX: number, clientY: number) {
+  function pointerAngle(clientX: number, clientY: number) {
     const svg = groupRef.current?.ownerSVGElement;
     if (!svg) return null;
     const rect = svg.getBoundingClientRect();
@@ -76,9 +81,11 @@ function RingLayer({
     const y = ((clientY - rect.top) / rect.height) * SIZE;
     const dx = x - CENTER;
     const dy = y - CENTER;
-    let angle = Math.atan2(dx, -dy) * (180 / Math.PI);
-    if (angle < 0) angle += 360;
-    const step = Math.round(angle / anglePerStep) % range;
+    return normalizeAngle(Math.atan2(dx, -dy) * (180 / Math.PI));
+  }
+
+  function currentValue(rot: number) {
+    const step = Math.round(normalizeAngle(-rot) / anglePerStep) % range;
     return min + step;
   }
 
@@ -87,19 +94,42 @@ function RingLayer({
     e.stopPropagation();
     setDragging(true);
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    const v = svgPointFromEvent(e.clientX, e.clientY);
-    if (v !== null) onChange(v);
+    lastAngleRef.current = pointerAngle(e.clientX, e.clientY);
   }
+
   function handlePointerMove(e: ReactPointerEvent) {
     if (!dragging || disabled) return;
-    const v = svgPointFromEvent(e.clientX, e.clientY);
-    if (v !== null) onChange(v);
+    const angle = pointerAngle(e.clientX, e.clientY);
+    if (angle === null || lastAngleRef.current === null) return;
+    // Chênh lệch góc giữa 2 lần di chuyển liên tiếp (xử lý cả trường hợp vòng qua mốc 0/360).
+    let delta = angle - lastAngleRef.current;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    lastAngleRef.current = angle;
+    setRotation((prev) => {
+      const next = prev + delta;
+      onChange(currentValue(next));
+      return next;
+    });
   }
+
   function stopDrag() {
+    if (!dragging) return;
     setDragging(false);
+    lastAngleRef.current = null;
+    // Chốt lại đúng khớp số gần nhất khi thả tay, xoay mượt về vị trí chuẩn.
+    setRotation((prev) => {
+      const value = currentValue(prev);
+      const snapped = -(value - min) * anglePerStep;
+      // Chọn hướng xoay ngắn nhất về vị trí chuẩn để tránh xoay vòng thừa.
+      let diff = snapped - prev;
+      diff = ((diff + 180) % 360 + 360) % 360 - 180;
+      return prev + diff;
+    });
   }
 
   const marks = Array.from({ length: range }, (_, i) => min + i);
+  const selectedValue = currentValue(rotation);
 
   return (
     <g
@@ -112,35 +142,28 @@ function RingLayer({
     >
       <path d={ringPath(style.outer, style.inner)} fill={style.fill} stroke={style.stroke} strokeWidth={1} />
       <g
-        style={{
-          transform: `rotate(${rotation}deg)`,
-          transformOrigin: `${CENTER}px ${CENTER}px`,
-          transition: dragging ? "none" : "transform 150ms ease-out",
-        }}
+        transform={`rotate(${rotation} ${CENTER} ${CENTER})`}
+        style={{ transition: dragging ? "none" : "transform 200ms ease-out" }}
       >
         {marks.map((m) => {
           const angle = (m - min) * anglePerStep;
           const pos = polar(style.textR, angle);
-          // Số đang ở đúng đỉnh 12 giờ (đã chọn) được xoay ngược lại để hiển thị THẲNG ĐỨNG,
-          // dễ đọc; các số còn lại giữ nguyên độ nghiêng tự nhiên theo vị trí trên vòng tròn
-          // (kế thừa từ phép xoay của cả nhóm <g>) — giống hiệu ứng khóa số thật.
-          const localRotation = m === value ? -rotation : 0;
+          // Số đang ở đỉnh 12 giờ (đã chọn) được xoay ngược lại để hiển thị THẲNG ĐỨNG dễ đọc;
+          // các số còn lại giữ nguyên độ nghiêng tự nhiên theo vị trí trên vòng tròn.
+          const isSelected = m === selectedValue;
+          const textRotation = isSelected ? -rotation : 0;
           return (
             <text
               key={m}
               x={pos.x}
               y={pos.y}
+              transform={`rotate(${textRotation} ${pos.x} ${pos.y})`}
               fill={style.textFill}
               fontSize={style.fontSize}
               fontFamily="'JetBrains Mono', monospace"
               fontWeight={700}
               textAnchor="middle"
-              dominantBaseline="middle"
-              style={{
-                transform: `rotate(${localRotation}deg)`,
-                transformOrigin: `${pos.x}px ${pos.y}px`,
-                transformBox: "fill-box",
-              }}
+              dominantBaseline="central"
             >
               {m}
             </text>
@@ -158,16 +181,10 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
     <div className="card p-6 sm:p-8 flex flex-col items-center gap-6">
       <div className="relative" style={{ width: "min(100%, 360px)", aspectRatio: "1 / 1" }}>
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full h-full select-none">
-          {/* Vạch chỉ điểm cố định ở đỉnh 12 giờ */}
-          <polygon
-            points={`${CENTER - 8},14 ${CENTER + 8},14 ${CENTER},30`}
-            fill="#B5502A"
-          />
           {Array.from({ length: Math.min(digits, RING_STYLE.length) }, (_, i) => (
             <RingLayer
               key={i}
               ringIndex={i}
-              value={values[i]}
               min={minDigit}
               max={maxDigit}
               disabled={disabled || opened}
@@ -198,6 +215,9 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
               </foreignObject>
             )}
           </g>
+
+          {/* Mũi tên đỏ CỐ ĐỊNH ở đỉnh 12 giờ, chỉ rõ vị trí số đang được chọn trên mỗi vòng */}
+          <polygon points={`${CENTER - 10},4 ${CENTER + 10},4 ${CENTER},26`} fill="#e0402a" stroke="#0a0a09" strokeWidth={1} />
         </svg>
       </div>
 
