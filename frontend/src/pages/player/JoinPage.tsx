@@ -80,7 +80,7 @@ export default function JoinPage() {
               </label>
               <input
                 className="input-field"
-                placeholder="Ví dụ: Đội Điều Tra 01"
+                placeholder="Ví dụ: Đội Thám Tử 01"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 autoComplete="off"
@@ -96,6 +96,10 @@ export default function JoinPage() {
               Bắt đầu điều tra
             </button>
           </form>
+
+          <p className="text-center text-xs text-white/30 mt-6">
+            Đặt tên đội tùy thích — đội mới sẽ được tạo tự động khi bạn bắt đầu.
+          </p>
         </div>
       </div>
     </div>
