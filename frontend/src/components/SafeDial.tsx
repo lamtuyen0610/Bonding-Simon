@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Check } from "lucide-react";
 
 interface Props {
@@ -15,15 +16,11 @@ const CENTER = SIZE / 2;
 
 // Bán kính vòng chữ số + bề rộng dải màu cho từng vòng, TÍNH TỪ NGOÀI VÀO TRONG.
 // Vòng 1 = ngoài cùng (đen), Vòng 2 = giữa (xanh thép), Vòng 3 = trong cùng (kem).
-// Số ở MỖI VÒNG ĐỨNG YÊN TẠI VỊ TRÍ CỐ ĐỊNH (không xoay, không di chuyển) — người chơi bấm
-// thẳng vào số muốn chọn trên từng vòng, số đó sẽ được tô sáng để biết đang chọn số nào.
 const RING_STYLE = [
-  { outer: 200, inner: 148, textR: 174, fill: "#141311", stroke: "rgba(255,255,255,0.08)", textFill: "#8a8a86", fontSize: 26 },
-  { outer: 148, inner: 100, textR: 124, fill: "#31404a", stroke: "rgba(255,255,255,0.08)", textFill: "#9aa7ac", fontSize: 21 },
-  { outer: 100, inner: 56, textR: 78, fill: "#DAD5C9", stroke: "rgba(0,0,0,0.1)", textFill: "#8a8478", fontSize: 17 },
+  { outer: 200, inner: 148, textR: 174, fill: "#141311", stroke: "rgba(255,255,255,0.08)", textFill: "#f4f1e8", fontSize: 30 },
+  { outer: 148, inner: 100, textR: 124, fill: "#31404a", stroke: "rgba(255,255,255,0.08)", textFill: "#e7edef", fontSize: 24 },
+  { outer: 100, inner: 56, textR: 78, fill: "#DAD5C9", stroke: "rgba(0,0,0,0.1)", textFill: "#141311", fontSize: 19 },
 ];
-
-const HIGHLIGHT_FILL = ["#e07a4a", "#7fbfb5", "#B5502A"];
 
 function polar(radius: number, angleDeg: number) {
   const rad = (angleDeg * Math.PI) / 180;
@@ -48,59 +45,128 @@ function ringPath(outerR: number, innerR: number) {
   ].join(" ");
 }
 
+function normalizeAngle(a: number) {
+  return ((a % 360) + 360) % 360;
+}
+
 function RingLayer({
   ringIndex,
-  value,
   min,
   max,
   disabled,
   onChange,
 }: {
   ringIndex: number;
-  value: number;
   min: number;
   max: number;
   disabled?: boolean;
   onChange: (v: number) => void;
 }) {
   const style = RING_STYLE[ringIndex] ?? RING_STYLE[RING_STYLE.length - 1];
-  const highlight = HIGHLIGHT_FILL[ringIndex] ?? HIGHLIGHT_FILL[HIGHLIGHT_FILL.length - 1];
   const range = max - min + 1;
   const anglePerStep = 360 / range;
+
+  // rotation: góc xoay LIÊN TỤC (không làm tròn khi đang kéo) để cảm giác mượt như xoay khóa
+  // thật. Số đang được chọn = số có vị trí gần đỉnh 12h nhất tại thời điểm hiện tại.
+  const [rotation, setRotation] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const groupRef = useRef<SVGGElement>(null);
+  const lastAngleRef = useRef<number | null>(null);
+
+  function pointerAngle(clientX: number, clientY: number) {
+    const svg = groupRef.current?.ownerSVGElement;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * SIZE;
+    const y = ((clientY - rect.top) / rect.height) * SIZE;
+    const dx = x - CENTER;
+    const dy = y - CENTER;
+    return normalizeAngle(Math.atan2(dx, -dy) * (180 / Math.PI));
+  }
+
+  function currentValue(rot: number) {
+    const step = Math.round(normalizeAngle(-rot) / anglePerStep) % range;
+    return min + step;
+  }
+
+  function handlePointerDown(e: ReactPointerEvent) {
+    if (disabled) return;
+    e.stopPropagation();
+    setDragging(true);
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    lastAngleRef.current = pointerAngle(e.clientX, e.clientY);
+  }
+
+  function handlePointerMove(e: ReactPointerEvent) {
+    if (!dragging || disabled) return;
+    const angle = pointerAngle(e.clientX, e.clientY);
+    if (angle === null || lastAngleRef.current === null) return;
+    // Chênh lệch góc giữa 2 lần di chuyển liên tiếp (xử lý cả trường hợp vòng qua mốc 0/360).
+    let delta = angle - lastAngleRef.current;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    lastAngleRef.current = angle;
+    setRotation((prev) => {
+      const next = prev + delta;
+      onChange(currentValue(next));
+      return next;
+    });
+  }
+
+  function stopDrag() {
+    if (!dragging) return;
+    setDragging(false);
+    lastAngleRef.current = null;
+    // Chốt lại đúng khớp số gần nhất khi thả tay, xoay mượt về vị trí chuẩn (không xoay vòng thừa).
+    setRotation((prev) => {
+      const value = currentValue(prev);
+      const snapped = -(value - min) * anglePerStep;
+      let diff = snapped - prev;
+      diff = ((diff + 180) % 360 + 360) % 360 - 180;
+      return prev + diff;
+    });
+  }
+
   const marks = Array.from({ length: range }, (_, i) => min + i);
 
   return (
-    <g>
+    <g
+      ref={groupRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={stopDrag}
+      onPointerLeave={stopDrag}
+      style={{ cursor: disabled ? "default" : dragging ? "grabbing" : "grab", touchAction: "none" }}
+    >
       <path d={ringPath(style.outer, style.inner)} fill={style.fill} stroke={style.stroke} strokeWidth={1} />
-      {marks.map((m) => {
-        const angle = (m - min) * anglePerStep;
-        const pos = polar(style.textR, angle);
-        const selected = m === value;
-        return (
-          <g
-            key={m}
-            onClick={() => !disabled && onChange(m)}
-            style={{ cursor: disabled ? "default" : "pointer" }}
-          >
-            {/* Vùng bấm rộng hơn chữ số một chút cho dễ chạm trên điện thoại */}
-            <circle cx={pos.x} cy={pos.y} r={18} fill="transparent" />
-            {selected && <circle cx={pos.x} cy={pos.y} r={16} fill={highlight} opacity={0.9} />}
+      <g
+        transform={`rotate(${rotation} ${CENTER} ${CENTER})`}
+        style={{ transition: dragging ? "none" : "transform 200ms ease-out" }}
+      >
+        {marks.map((m) => {
+          const angle = (m - min) * anglePerStep;
+          const pos = polar(style.textR, angle);
+          // LUÔN giữ chữ số thẳng đứng dễ đọc (không nghiêng theo vòng) — chỉ VỊ TRÍ của số
+          // di chuyển quanh vòng tròn khi xoay, còn hướng chữ luôn cố định.
+          const textRotation = -rotation;
+          return (
             <text
+              key={m}
               x={pos.x}
               y={pos.y}
-              fill={selected ? "#0a0a09" : style.textFill}
+              transform={`rotate(${textRotation} ${pos.x} ${pos.y})`}
+              fill={style.textFill}
               fontSize={style.fontSize}
               fontFamily="'JetBrains Mono', monospace"
-              fontWeight={selected ? 800 : 600}
+              fontWeight={700}
               textAnchor="middle"
               dominantBaseline="central"
-              style={{ pointerEvents: "none" }}
             >
               {m}
             </text>
-          </g>
-        );
-      })}
+          );
+        })}
+      </g>
     </g>
   );
 }
@@ -110,10 +176,6 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
 
   return (
     <div className="card p-6 sm:p-8 flex flex-col items-center gap-6">
-      <p className="text-xs text-white/40 text-center max-w-xs">
-        Bấm trực tiếp vào số muốn chọn trên từng vòng — số được chọn sẽ tô sáng.
-      </p>
-
       <div className="flex items-center justify-center">
         <div className="relative" style={{ width: "min(280px, 78vw)", aspectRatio: "1 / 1" }}>
           <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full h-full select-none">
@@ -121,7 +183,6 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
               <RingLayer
                 key={i}
                 ringIndex={i}
-                value={values[i]}
                 min={minDigit}
                 max={maxDigit}
                 disabled={disabled || opened}
@@ -129,7 +190,7 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
               />
             ))}
 
-            {/* Núm trung tâm - đồng thời là nút xác nhận gửi mã */}
+            {/* Núm xoay trung tâm - đồng thời là nút xác nhận gửi mã */}
             <g
               onClick={() => {
                 if (!disabled && !opened) onSubmit(values.join(""));
@@ -152,6 +213,9 @@ export default function SafeDial({ digits, minDigit, maxDigit, onSubmit, disable
                 </foreignObject>
               )}
             </g>
+
+            {/* Mũi tên đỏ CỐ ĐỊNH ở đỉnh 12 giờ, chỉ rõ vị trí số đang được chọn trên mỗi vòng */}
+            <polygon points={`${CENTER - 10},4 ${CENTER + 10},4 ${CENTER},26`} fill="#e0402a" stroke="#0a0a09" strokeWidth={1} />
           </svg>
         </div>
       </div>
