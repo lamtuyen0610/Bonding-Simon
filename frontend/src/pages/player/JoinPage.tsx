@@ -48,7 +48,7 @@ export default function JoinPage() {
             </div>
             <p className="text-center eyebrow mb-2">Hoạt động điều tra vụ án · Team bonding</p>
             <p className="text-center text-white/60 text-sm">
-              Một vụ án bí ẩn đang chờ được giải mã, đặt tên đội và bắt đầu điều tra.
+              Một vụ án bí ẩn đang chờ đội của bạn khám phá. Nhập tên đội để bắt đầu điều tra.
             </p>
           </div>
 
@@ -57,13 +57,13 @@ export default function JoinPage() {
             <div className="space-y-5">
               <Rule
                 icon={<Puzzle size={18} className="text-purple-soft" />}
-                title="6 nhiệm vụ điều tra"
-                desc="Hãy lần theo các manh mối được tìm thấy ở hiện trường"
+                title="6 nhiệm vụ điều tra, tự do lựa chọn"
+                desc="Đội có thể chọn giải bất kỳ nhiệm vụ nào, không cần theo đúng thứ tự."
               />
               <Rule
                 icon={<FileLock2 size={18} className="text-turquoise" />}
                 title="Hồ sơ bổ sung trong quá trình phá án"
-                desc="Người chơi sẽ nhận được các bộ hồ sơ bổ sung từ BTC trong quá trình phá án, trong đó chứa manh mối cho các bước tiếp theo."
+                desc="Người chơi sẽ nhận được các bộ hồ sơ bổ sung trong quá trình phá án, trong đó chứa manh mối cho các bước tiếp theo."
               />
               <Rule
                 icon={<Trophy size={18} className="text-turquoise" />}
@@ -80,7 +80,7 @@ export default function JoinPage() {
               </label>
               <input
                 className="input-field"
-                placeholder="Ví dụ: Đội Điều Tra 01"
+                placeholder="Ví dụ: Đội Thám Tử 01"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 autoComplete="off"
@@ -98,7 +98,7 @@ export default function JoinPage() {
           </form>
 
           <p className="text-center text-xs text-white/30 mt-6">
-            
+            Đặt tên đội tùy thích — đội mới sẽ được tạo tự động khi bạn bắt đầu.
           </p>
         </div>
       </div>

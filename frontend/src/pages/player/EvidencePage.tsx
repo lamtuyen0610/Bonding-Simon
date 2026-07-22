@@ -61,10 +61,8 @@ const CONTENT: Record<
       {
         title: "Nhận tập hồ sơ số 1",
         body: (
-          <div className="flex flex-wrap gap-5 justify-center items-start py-4">
-            <Polaroid src="/evidence/clue1-corridor.jpg" alt="Hành lang hiện trường" rotate={-3} caption="TRACE-KN-181002" />
-            <Polaroid src="/evidence/clue1-flashlight.jpg" alt="Ánh đèn pin hiện trường" rotate={2} />
-            <StickyNote text="1 chú gấu bông được tìm thấy tại P5" rotate={-2} />
+          <div className="flex justify-center py-4">
+            <DocumentSheet src="/evidence/clue1-corridor.jpg" alt="Hành lang hiện trường — TRACE-KN-181002" />
           </div>
         ),
       },
@@ -91,6 +89,8 @@ const CONTENT: Record<
             <Polaroid src="/evidence/clue2-food1.jpg" alt="Vật chứng 1" rotate={2} />
             <Polaroid src="/evidence/clue2-food2.jpg" alt="Vật chứng 2" rotate={-3} />
             <Polaroid src="/evidence/clue2-food3.jpg" alt="Vật chứng 3" rotate={3} />
+            <Polaroid src="/evidence/clue2-article.jpg" alt="Bài viết liên quan" rotate={1} />
+            <Polaroid src="/evidence/clue2-newspaper.jpg" alt="Bài báo Đời sống & Pháp luật" rotate={-1} />
           </div>
         ),
       },
@@ -98,10 +98,8 @@ const CONTENT: Record<
         title: "Kết quả khám nghiệm tử thi",
         body: (
           <div className="flex flex-wrap gap-5 justify-center items-start py-4">
-            <Polaroid src="/evidence/clue2-xray.jpg" alt="Phim X-quang" rotate={2} />
-            <Polaroid src="/evidence/clue2-newspaper.jpg" alt="Bài báo liên quan" rotate={-2} />
-            <Polaroid src="/evidence/clue2-report1.jpg" alt="Báo cáo giám định pháp y 1" rotate={1} />
-            <Polaroid src="/evidence/clue2-report2.jpg" alt="Báo cáo giám định pháp y 2" rotate={-1} />
+            <Polaroid src="/evidence/clue2-report-a.jpg" alt="Báo cáo giám định pháp y 1" rotate={1} />
+            <Polaroid src="/evidence/clue2-report-b.jpg" alt="Báo cáo giám định pháp y 2" rotate={-1} />
           </div>
         ),
       },

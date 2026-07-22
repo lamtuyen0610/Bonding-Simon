@@ -258,35 +258,6 @@ export default function DashboardPage() {
           <Banner tone="warn">Trò chơi đang tạm dừng. Vui lòng chờ Ban tổ chức tiếp tục.</Banner>
         )}
 
-        {canEndCase && (
-          <div className="card p-6 text-center border-purple/40 bg-purple/5">
-            <KeyRound className="mx-auto mb-3 text-purple-soft" size={28} />
-            <p className="font-semibold mb-1">Đội đã thử đủ 6 nhiệm vụ điều tra!</p>
-            <p className="text-sm text-white/60 mb-4">
-              Bấm "Giải mã vụ án" để kiểm tra. Nếu đúng hết, câu hỏi cuối cùng sẽ mở khóa. Nếu còn câu sai, đội có
-              thể quay lại đổi đáp án bất kỳ lúc nào rồi thử lại.
-            </p>
-            <button className="btn-primary mx-auto" onClick={endCase} disabled={endingCase}>
-              {endingCase ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
-              Giải mã vụ án
-            </button>
-          </div>
-        )}
-
-        {canDecode && (
-          <div className="card p-6 text-center border-purple/40 bg-purple/5">
-            <Flag className="mx-auto mb-3 text-purple-soft" size={28} />
-            <p className="font-semibold mb-1">Đội đã trả lời xong câu hỏi cuối cùng!</p>
-            <p className="text-sm text-white/60 mb-4">
-              Bấm "Khép lại vụ án" để chốt toàn bộ đáp án. Nếu có câu sai, đội sẽ được quay lại sửa và thử lại.
-            </p>
-            <button className="btn-primary mx-auto" onClick={decodeCase} disabled={decoding}>
-              {decoding ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
-              Khép lại vụ án
-            </button>
-          </div>
-        )}
-
         {/* Task list */}
         {!decoded && (
           <div>
@@ -323,6 +294,22 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* "Giải mã vụ án" (kiểm tra 6/6) - đặt ngay dưới danh sách 6 nhiệm vụ */}
+        {canEndCase && (
+          <div className="card p-6 text-center border-purple/40 bg-purple/5">
+            <KeyRound className="mx-auto mb-3 text-purple-soft" size={28} />
+            <p className="font-semibold mb-1">Đội đã thử đủ 6 nhiệm vụ điều tra!</p>
+            <p className="text-sm text-white/60 mb-4">
+              Bấm "Giải mã vụ án" để kiểm tra. Nếu đúng hết, câu hỏi cuối cùng sẽ mở khóa. Nếu còn câu sai, đội có
+              thể quay lại đổi đáp án bất kỳ lúc nào rồi thử lại.
+            </p>
+            <button className="btn-primary mx-auto" onClick={endCase} disabled={endingCase}>
+              {endingCase ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+              Giải mã vụ án
+            </button>
+          </div>
+        )}
+
         {/* Question 7 */}
         {finalQ && !decoded && (
           <div>
@@ -338,6 +325,20 @@ export default function DashboardPage() {
                 <StatusBadge status={finalQ.status} />
               </div>
               <ChevronRight size={20} className="text-purple-soft" />
+            </button>
+          </div>
+        )}
+
+        {/* Dự phòng: nếu vì lý do gì đó việc tự động giải mã sau câu 7 chưa thành công,
+            đội vẫn có thể tự bấm lại thủ công ở đây. */}
+        {canDecode && (
+          <div className="card p-6 text-center border-purple/40 bg-purple/5">
+            <Flag className="mx-auto mb-3 text-purple-soft" size={28} />
+            <p className="font-semibold mb-1">Đội đã trả lời câu hỏi cuối cùng!</p>
+            <p className="text-sm text-white/60 mb-4">Bấm nút bên dưới để kiểm tra lại kết quả.</p>
+            <button className="btn-primary mx-auto" onClick={decodeCase} disabled={decoding}>
+              {decoding ? <Loader2 size={16} className="animate-spin" /> : <Flag size={16} />}
+              Kiểm tra kết quả
             </button>
           </div>
         )}

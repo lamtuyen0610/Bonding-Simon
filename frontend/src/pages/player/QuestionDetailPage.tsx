@@ -20,6 +20,16 @@ const EVIDENCE_PAGE_BY_CODE: Record<string, string> = {
   SAFE: "clue2",
 };
 
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours} giờ ${minutes} phút ${seconds} giây`;
+  if (minutes > 0) return `${minutes} phút ${seconds} giây`;
+  return `${seconds} giây`;
+}
+
 export default function QuestionDetailPage() {
   const { questionId } = useParams();
   const navigate = useNavigate();
@@ -92,6 +102,36 @@ export default function QuestionDetailPage() {
         questionId: question.id,
         answer: finalAnswer,
       });
+
+      // Câu hỏi số 7: ngay khi trả lời xong, tự động kiểm tra toàn bộ đáp án luôn — không cần
+      // đội bấm thêm nút "Giải mã vụ án" nào nữa.
+      if (question.isFinalQuestion && res.submission.status === "ANSWERED") {
+        try {
+          const decodeRes = await api.post<{ allCorrect: boolean; durationMs: number | null }>(
+            "/player/decode-case"
+          );
+          if (decodeRes.allCorrect) {
+            const timeText = decodeRes.durationMs !== null ? formatDuration(decodeRes.durationMs) : null;
+            setSuccessModal(
+              `Đội của bạn đã giải mã thành công vụ án!${timeText ? ` Thời gian hoàn thành: ${timeText}.` : ""}`
+            );
+          } else {
+            toast(
+              "error",
+              "Đáp án sai. Đội cần điều tra lại vụ án — quay lại các câu hỏi và đổi đáp án cho những câu chưa chắc chắn, rồi trả lời lại câu hỏi số 7."
+            );
+          }
+        } catch (decodeErr) {
+          toast(
+            "error",
+            decodeErr instanceof ApiError ? decodeErr.message : "Không thể kiểm tra đáp án. Vui lòng thử lại."
+          );
+        }
+        await refresh();
+        setSubmitting(false);
+        return;
+      }
+
       if (res.submission.status === "CORRECT") {
         const evidenceCode = EVIDENCE_PAGE_BY_CODE[question.code];
         if (evidenceCode) {
@@ -106,11 +146,11 @@ export default function QuestionDetailPage() {
         }
       } else if (res.submission.status === "INCORRECT") {
         toast("error", "Đáp án chưa đúng, thử lại nhé.");
-      } else if (res.submission.status === "ANSWERED") {
-        toast("info", "Đã ghi nhận đáp án. Kết quả sẽ được tiết lộ sau khi kết thúc vụ án.");
-      } else {
+      } else if (res.submission.status === "PENDING_REVIEW") {
         toast("info", "Đã gửi đáp án. Đang chờ Ban tổ chức kiểm tra.");
       }
+      // Trạng thái "ANSWERED" (câu ẩn đáp án không phải câu 7): không hiện toast gì cả —
+      // đội quay lại danh sách 6 câu hỏi mà không có gián đoạn.
       await refresh();
       if (question.type !== "SAFE_DIAL" && !res.submission.successMessage) {
         navigate("/dashboard");
