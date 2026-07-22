@@ -45,7 +45,7 @@ export default function StoryPage() {
   return (
     <div className={`min-h-screen ${fullscreen ? "bg-ink fixed inset-0 z-50 overflow-y-auto" : ""}`}>
       {!fullscreen && (
-        <header className="sticky top-0 z-10 backdrop-blur-md bg-ink/80 border-b border-white/10">
+        <header className="sticky top-0 z-10 pt-6 sm:pt-0 backdrop-blur-md bg-ink/80 border-b border-white/10">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
             <button onClick={() => navigate("/dashboard")} className="text-white/60 hover:text-white transition flex items-center gap-2">
               <ArrowLeft size={20} /> <span className="text-sm">Bảng điều tra</span>
