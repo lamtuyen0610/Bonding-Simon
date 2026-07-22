@@ -45,6 +45,14 @@ function DocumentSheet({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+function ContactNote({ text }: { text: string }) {
+  return (
+    <div className="mt-4 border-2 border-purple bg-purple/10 px-4 py-3 text-center">
+      <p className="font-mono font-bold uppercase tracking-wide text-purple-soft text-sm">{text}</p>
+    </div>
+  );
+}
+
 const CONTENT: Record<
   string,
   {
@@ -61,8 +69,11 @@ const CONTENT: Record<
       {
         title: "Nhận tập hồ sơ số 1",
         body: (
-          <div className="flex justify-center py-4">
-            <DocumentSheet src="/evidence/clue1-corridor.jpg" alt="Hành lang hiện trường — TRACE-KN-181002" />
+          <div>
+            <div className="flex justify-center py-4">
+              <DocumentSheet src="/evidence/clue1-corridor.jpg" alt="Hành lang hiện trường — TRACE-KN-181002" />
+            </div>
+            <ContactNote text="Liên hệ với ban tổ chức để nhận tập hồ sơ bổ sung số 1" />
           </div>
         ),
       },
@@ -84,13 +95,16 @@ const CONTENT: Record<
       {
         title: "Tang chứng trong két sắt",
         body: (
-          <div className="flex flex-wrap gap-5 justify-center items-start py-4">
-            <Polaroid src="/evidence/clue2-clothes.jpg" alt="Vật dụng trong két sắt" rotate={-2} />
-            <Polaroid src="/evidence/clue2-food1.jpg" alt="Vật chứng 1" rotate={2} />
-            <Polaroid src="/evidence/clue2-food2.jpg" alt="Vật chứng 2" rotate={-3} />
-            <Polaroid src="/evidence/clue2-food3.jpg" alt="Vật chứng 3" rotate={3} />
-            <Polaroid src="/evidence/clue2-article.jpg" alt="Bài viết liên quan" rotate={1} />
-            <Polaroid src="/evidence/clue2-newspaper.jpg" alt="Bài báo Đời sống & Pháp luật" rotate={-1} />
+          <div>
+            <div className="flex flex-wrap gap-5 justify-center items-start py-4">
+              <Polaroid src="/evidence/clue2-clothes.jpg" alt="Vật dụng trong két sắt" rotate={-2} />
+              <Polaroid src="/evidence/clue2-food1.jpg" alt="Vật chứng 1" rotate={2} />
+              <Polaroid src="/evidence/clue2-food2.jpg" alt="Vật chứng 2" rotate={-3} />
+              <Polaroid src="/evidence/clue2-food3.jpg" alt="Vật chứng 3" rotate={3} />
+              <Polaroid src="/evidence/clue2-article.jpg" alt="Bài viết liên quan" rotate={1} />
+              <Polaroid src="/evidence/clue2-newspaper.jpg" alt="Bài báo Đời sống & Pháp luật" rotate={-1} />
+            </div>
+            <ContactNote text="Liên hệ với ban tổ chức để nhận tập hồ sơ bổ sung số 2" />
           </div>
         ),
       },
