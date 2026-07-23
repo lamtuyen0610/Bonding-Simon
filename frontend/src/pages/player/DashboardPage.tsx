@@ -213,7 +213,7 @@ export default function DashboardPage() {
         {!decoded && (
           <div className="card p-5">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-white/60">Tiến độ 6 nhiệm vụ đầu tiên (đã thử)</span>
+              <span className="text-white/60">Tiến độ 6 nhiệm vụ </span>
               <span className="font-semibold text-turquoise">{completedCount}/6</span>
             </div>
             <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
